@@ -72,11 +72,8 @@ serve(async (req) => {
       });
     }
     
-    // Get current date for filtering
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
-    
-    // Transform and filter Google Sheets data to match our shows format
+    // Transform Google Sheets data to match our shows format
+    // No longer filtering out past events, only filtering private events
     const shows = data.values
       .filter(row => {
         if (!row[0] || !row[1] || !row[3] || !row[4]) {
@@ -85,18 +82,7 @@ serve(async (req) => {
         
         // Filter out private events
         const isPrivate = (row[5] || "").toLowerCase() === "true";
-        if (isPrivate) {
-          return false;
-        }
-        
-        // Filter out past events using the parseDateString function for dd/MM/yyyy format
-        try {
-          const eventDate = parseDateString(row[0]);
-          return eventDate !== null && eventDate >= currentDate;
-        } catch (e) {
-          console.error("Error parsing date:", row[0], e);
-          return false;
-        }
+        return !isPrivate;
       })
       .map((row) => ({
         date: row[0] || "",         // Date
