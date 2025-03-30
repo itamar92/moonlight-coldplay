@@ -67,6 +67,25 @@ const ShowsSection = () => {
     fetchShows();
   }, []);
 
+  // Format the date for display
+  const formatDate = (dateString: string) => {
+    try {
+      // Try to parse the date and format it nicely
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return new Intl.DateTimeFormat('en-US', {
+          weekday: 'short',
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date);
+      }
+      return dateString; // Fall back to original string if parsing fails
+    } catch (e) {
+      return dateString; // Return original date string in case of error
+    }
+  };
+
   return (
     <section id="shows" className="py-20 bg-gradient-to-b from-band-dark to-black relative overflow-hidden">
       {/* Decorative elements */}
@@ -102,7 +121,7 @@ const ShowsSection = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center mb-4 text-band-purple">
                     <Calendar size={18} className="mr-2" />
-                    <span className="text-sm font-medium">{show.date}</span>
+                    <span className="text-sm font-medium">{formatDate(show.date)}</span>
                   </div>
                   <h3 className="text-xl font-bold text-white mb-1">{show.venue}</h3>
                   <div className="flex items-center mb-6 text-white/70">

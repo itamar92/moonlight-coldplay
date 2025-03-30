@@ -21,8 +21,11 @@ serve(async (req) => {
       throw new Error("Missing required environment variables");
     }
 
-    // Sheet range (assuming shows data is in Sheet1 from A2:E)
-    const RANGE = "Sheet1!A2:E";
+    // Specify the sheet name and range (starting from row 2 to skip headers)
+    const SHEET_NAME = "Coldplay"; 
+    const RANGE = `${SHEET_NAME}!A2:F`;
+    
+    console.log(`Fetching data from sheet: ${SHEET_NAME}, range: ${RANGE}`);
     
     // Fetch data from Google Sheets
     const response = await fetch(
@@ -39,16 +42,53 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    console.log(`Received data from Google Sheets: ${data.values?.length || 0} rows`);
     
-    // Transform Google Sheets data to match our shows format
-    const shows = data.values.map((row: string[]) => ({
-      date: row[0] || "",
-      venue: row[1] || "",
-      location: row[2] || "",
-      ticket_link: row[3] || "#",
-      is_published: true
-    }));
+    if (!data.values || data.values.length === 0) {
+      return new Response(JSON.stringify({ shows: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
+    // Get current date for filtering
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
+    
+    // Transform and filter Google Sheets data to match our shows format
+    const shows = data.values
+      .filter(row => {
+        if (!row[0] || !row[1] || !row[3] || !row[4]) {
+          return false; // Skip rows with missing essential data
+        }
+        
+        // Filter out private events
+        const isPrivate = (row[5] || "").toLowerCase() === "true";
+        if (isPrivate) {
+          return false;
+        }
+        
+        // Filter out past events
+        try {
+          // Parse the date from column A
+          // This assumes the date format is MM/DD/YYYY or similar recognized format
+          const eventDate = new Date(row[0]);
+          return !isNaN(eventDate.getTime()) && eventDate >= currentDate;
+        } catch (e) {
+          console.error("Error parsing date:", row[0], e);
+          return false;
+        }
+      })
+      .map((row) => ({
+        date: row[0] || "",         // Date
+        venue: row[1] || "",        // Event Name
+        location: row[3] || "",     // Location
+        ticket_link: row[4] || "#", // Links for tickets
+        is_published: true
+      }));
 
+    console.log(`Filtered to ${shows.length} valid shows`);
+    
     return new Response(JSON.stringify({ shows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
