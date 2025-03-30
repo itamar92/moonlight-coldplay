@@ -9,7 +9,7 @@ const HeroSection = () => {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full h-full flex items-center justify-center">
           <img 
-            src="/lovable-uploads/17b5ab98-9e49-4a35-a8f3-d56df8986bc7.png" 
+            src="/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png" 
             alt="Moonlight Logo" 
             className="w-full h-full object-cover opacity-20"
           />
@@ -25,9 +25,9 @@ const HeroSection = () => {
       {/* Content */}
       <div className="container mx-auto px-4 z-10 text-center">
         <img 
-          src="/lovable-uploads/17b5ab98-9e49-4a35-a8f3-d56df8986bc7.png" 
+          src="/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png" 
           alt="Moonlight Logo" 
-          className="w-56 h-56 md:w-64 md:h-64 mx-auto mb-8 animate-pulse-glow"
+          className="w-72 h-72 md:w-80 md:h-80 mx-auto mb-8 animate-pulse-glow"
         />
         <h1 className="text-4xl md:text-6xl font-bold mb-4 text-glow">
           <span className="text-white">MOONLIGHT</span>
