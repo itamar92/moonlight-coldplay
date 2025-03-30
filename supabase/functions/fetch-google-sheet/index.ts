@@ -6,27 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Parse a date string in dd/MM/yyyy format to a Date object
-function parseDateString(dateString: string): Date | null {
-  try {
-    if (dateString.includes('/')) {
-      const [day, month, year] = dateString.split('/');
-      const parsedDate = new Date(`${year}-${month}-${day}`);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
-      }
-    }
-    
-    // Fallback to standard date parsing
-    const date = new Date(dateString);
-    return !isNaN(date.getTime()) ? date : null;
-  } catch (e) {
-    console.error('Error parsing date:', dateString, e);
-    return null;
-  }
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -89,9 +68,16 @@ serve(async (req) => {
           return false;
         }
         
-        // Filter out past events using the provided date parsing function
-        const eventDate = parseDateString(row[0]);
-        return eventDate && eventDate >= currentDate;
+        // Filter out past events
+        try {
+          // Parse the date from column A
+          // This assumes the date format is MM/DD/YYYY or similar recognized format
+          const eventDate = new Date(row[0]);
+          return !isNaN(eventDate.getTime()) && eventDate >= currentDate;
+        } catch (e) {
+          console.error("Error parsing date:", row[0], e);
+          return false;
+        }
       })
       .map((row) => ({
         date: row[0] || "",         // Date
