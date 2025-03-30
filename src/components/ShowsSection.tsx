@@ -22,15 +22,36 @@ const ShowsSection = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        const { data, error } = await supabase
+        // First try to get shows from Supabase
+        const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
           .eq('is_published', true)
           .order('date', { ascending: true })
           .limit(4);
 
-        if (error) throw error;
-        setShows(data || []);
+        if (supabaseError) throw supabaseError;
+        
+        // If we have data in Supabase, use that
+        if (supabaseData && supabaseData.length > 0) {
+          setShows(supabaseData);
+          setLoading(false);
+          return;
+        }
+        
+        // If no data in Supabase, try to fetch from Google Sheets
+        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
+          'fetch-google-sheet'
+        );
+
+        if (functionError) throw functionError;
+        
+        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+          setShows(googleSheetsData.shows);
+        } else {
+          // No shows found in either Supabase or Google Sheets
+          setShows([]);
+        }
       } catch (error: any) {
         console.error('Error fetching shows:', error);
         toast({
@@ -76,8 +97,8 @@ const ShowsSection = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {shows.map((show) => (
-              <Card key={show.id} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
+            {shows.map((show, index) => (
+              <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center mb-4 text-band-purple">
                     <Calendar size={18} className="mr-2" />

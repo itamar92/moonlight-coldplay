@@ -1,58 +1,70 @@
 
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { 
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { CalendarIcon, MapPinIcon, LinkIcon, PlusCircleIcon, RefreshCwIcon, PencilIcon, TrashIcon, LockIcon, UnlockIcon } from 'lucide-react';
 
-interface Show {
-  id: string;
+interface ShowData {
+  id?: string;
   date: string;
   venue: string;
   location: string;
   ticket_link: string;
-  is_published: boolean;
+  is_published?: boolean;
 }
 
 const Admin = () => {
-  const [session, setSession] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [shows, setShows] = useState<Show[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentShow, setCurrentShow] = useState<Show | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [shows, setShows] = useState<ShowData[]>([]);
+  const [editingShow, setEditingShow] = useState<ShowData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // Check authentication and admin status
+  const form = useForm<ShowData>({
+    defaultValues: {
+      date: '',
+      venue: '',
+      location: '',
+      ticket_link: '',
+      is_published: true
+    }
+  });
+
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setIsAdmin(false);
+          setIsLoading(false);
+          return;
+        }
 
-      if (data.session) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        setIsAdmin(profileData?.is_admin || false);
-      }
-      
-      setLoading(false);
-    };
-
-    checkSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      
-      if (session) {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('is_admin')
@@ -60,181 +72,168 @@ const Admin = () => {
           .single();
           
         setIsAdmin(profileData?.is_admin || false);
-      } else {
+      } catch (error) {
+        console.error('Error checking admin status:', error);
         setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
       }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
     };
+
+    checkAdminStatus();
   }, []);
 
-  // Fetch shows
   useEffect(() => {
-    const fetchShows = async () => {
+    if (isAdmin) {
+      fetchShows();
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (editingShow) {
+      form.reset({
+        date: editingShow.date,
+        venue: editingShow.venue,
+        location: editingShow.location,
+        ticket_link: editingShow.ticket_link,
+        is_published: editingShow.is_published
+      });
+    } else {
+      form.reset({
+        date: '',
+        venue: '',
+        location: '',
+        ticket_link: '',
+        is_published: true
+      });
+    }
+  }, [editingShow]);
+
+  const fetchShows = async () => {
+    try {
       const { data, error } = await supabase
         .from('shows')
         .select('*')
         .order('date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching shows:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching shows',
-          description: error.message,
-        });
-        return;
-      }
-
-      setShows(data || []);
-    };
-
-    if (session) {
-      fetchShows();
-    }
-  }, [session]);
-
-  const importFromGoogleSheet = async () => {
-    try {
-      setLoading(true);
-      
-      // Call edge function to fetch Google Sheet data
-      const { data: sheetData, error: functionError } = await supabase.functions.invoke('fetch-google-sheet');
-      
-      if (functionError) throw new Error(functionError.message);
-      
-      if (!sheetData.shows || !sheetData.shows.length) {
-        toast({
-          variant: 'destructive',
-          title: 'Import failed',
-          description: 'No shows found in Google Sheet',
-        });
-        return;
-      }
-      
-      // Insert shows into database
-      const { error } = await supabase
-        .from('shows')
-        .insert(sheetData.shows);
         
       if (error) throw error;
-      
-      toast({
-        title: 'Import successful',
-        description: `${sheetData.shows.length} shows imported from Google Sheet`,
-      });
-      
-      // Refresh shows list
-      const { data: refreshedShows } = await supabase
-        .from('shows')
-        .select('*')
-        .order('date', { ascending: true });
-        
-      setShows(refreshedShows || []);
-    } catch (error: any) {
-      console.error('Import error:', error);
+      setShows(data || []);
+    } catch (error) {
+      console.error('Error fetching shows:', error);
       toast({
         variant: 'destructive',
-        title: 'Import failed',
-        description: error.message,
+        title: 'Error fetching shows',
+        description: "Couldn't load shows. Please try again.",
       });
-    } finally {
-      setImportDialogOpen(false);
-      setLoading(false);
     }
   };
-  
-  const handleEdit = (show: Show) => {
-    setCurrentShow({ ...show });
-    setEditDialogOpen(true);
-  };
-  
-  const handleCreate = () => {
-    setCurrentShow({
-      id: '',
-      date: '',
-      venue: '',
-      location: '',
-      ticket_link: '#',
-      is_published: true
-    });
-    setEditDialogOpen(true);
-  };
-  
-  const saveShow = async () => {
-    if (!currentShow) return;
-    
+
+  const syncWithGoogleSheet = async () => {
     try {
-      setLoading(true);
+      setIsSubmitting(true);
+      toast({
+        title: 'Syncing with Google Sheet',
+        description: "Fetching latest show data...",
+      });
       
-      if (currentShow.id) {
+      const { data, error } = await supabase.functions.invoke('fetch-google-sheet');
+      
+      if (error) throw error;
+      
+      if (!data.shows || !Array.isArray(data.shows)) {
+        throw new Error("Invalid data format from Google Sheet");
+      }
+      
+      // Insert each show into the database
+      for (const show of data.shows) {
+        const { error: insertError } = await supabase
+          .from('shows')
+          .insert(show);
+          
+        if (insertError) throw insertError;
+      }
+      
+      await fetchShows();
+      
+      toast({
+        title: 'Sync Complete',
+        description: `Successfully imported ${data.shows.length} shows from Google Sheet.`,
+      });
+    } catch (error: any) {
+      console.error('Error syncing with Google Sheet:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: error.message || "Couldn't sync shows from Google Sheet.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onSubmit = async (data: ShowData) => {
+    try {
+      setIsSubmitting(true);
+      
+      if (editingShow?.id) {
         // Update existing show
         const { error } = await supabase
           .from('shows')
           .update({
-            date: currentShow.date,
-            venue: currentShow.venue,
-            location: currentShow.location,
-            ticket_link: currentShow.ticket_link,
-            is_published: currentShow.is_published,
-            updated_at: new Date().toISOString(),
+            date: data.date,
+            venue: data.venue,
+            location: data.location,
+            ticket_link: data.ticket_link,
+            is_published: data.is_published,
+            updated_at: new Date().toISOString()
           })
-          .eq('id', currentShow.id);
+          .eq('id', editingShow.id);
           
         if (error) throw error;
         
         toast({
-          title: 'Show updated',
-          description: `Updated show at ${currentShow.venue}`,
+          title: 'Show Updated',
+          description: "The show has been updated successfully.",
         });
       } else {
         // Create new show
         const { error } = await supabase
           .from('shows')
           .insert({
-            date: currentShow.date,
-            venue: currentShow.venue,
-            location: currentShow.location,
-            ticket_link: currentShow.ticket_link,
-            is_published: currentShow.is_published,
+            date: data.date,
+            venue: data.venue,
+            location: data.location,
+            ticket_link: data.ticket_link,
+            is_published: data.is_published
           });
           
         if (error) throw error;
         
         toast({
-          title: 'Show created',
-          description: `New show at ${currentShow.venue} created`,
+          title: 'Show Created',
+          description: "The show has been created successfully.",
         });
       }
       
-      // Refresh shows list
-      const { data: refreshedShows } = await supabase
-        .from('shows')
-        .select('*')
-        .order('date', { ascending: true });
-        
-      setShows(refreshedShows || []);
+      setEditingShow(null);
+      form.reset();
+      fetchShows();
     } catch (error: any) {
-      console.error('Save error:', error);
+      console.error('Error saving show:', error);
       toast({
         variant: 'destructive',
-        title: 'Save failed',
-        description: error.message,
+        title: 'Error Saving Show',
+        description: error.message || "Couldn't save the show. Please try again.",
       });
     } finally {
-      setEditDialogOpen(false);
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
-  
-  const deleteShow = async (id: string) => {
+
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this show?')) return;
     
     try {
-      setLoading(true);
-      
       const { error } = await supabase
         .from('shows')
         .delete()
@@ -243,288 +242,314 @@ const Admin = () => {
       if (error) throw error;
       
       toast({
-        title: 'Show deleted',
-        description: 'The show has been removed',
+        title: 'Show Deleted',
+        description: "The show has been deleted successfully.",
       });
       
-      // Remove from local state
-      setShows(shows.filter(show => show.id !== id));
+      fetchShows();
     } catch (error: any) {
-      console.error('Delete error:', error);
+      console.error('Error deleting show:', error);
       toast({
         variant: 'destructive',
-        title: 'Delete failed',
-        description: error.message,
+        title: 'Error Deleting Show',
+        description: error.message || "Couldn't delete the show. Please try again.",
       });
-    } finally {
-      setLoading(false);
     }
   };
-  
-  const togglePublished = async (id: string, currentStatus: boolean) => {
+
+  const togglePublishStatus = async (id: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
         .from('shows')
-        .update({ is_published: !currentStatus })
+        .update({
+          is_published: !currentStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id);
         
       if (error) throw error;
       
-      // Update local state
-      setShows(shows.map(show => 
-        show.id === id ? { ...show, is_published: !currentStatus } : show
-      ));
-      
       toast({
-        title: currentStatus ? 'Show unpublished' : 'Show published',
-        description: `The show is now ${currentStatus ? 'hidden from' : 'visible to'} the public`,
+        title: currentStatus ? 'Show Unpublished' : 'Show Published',
+        description: `The show is now ${currentStatus ? 'hidden from' : 'visible on'} the public page.`,
       });
+      
+      fetchShows();
     } catch (error: any) {
-      console.error('Toggle published error:', error);
+      console.error('Error updating show status:', error);
       toast({
         variant: 'destructive',
-        title: 'Update failed',
-        description: error.message,
+        title: 'Error Updating Status',
+        description: error.message || "Couldn't update show status. Please try again.",
       });
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  // Redirect if not authenticated or not admin
-  if (!loading && (!session || !isAdmin)) {
-    return <Navigate to="/auth" />;
-  }
-
-  if (loading) {
+  // Redirect if not admin and loading completed
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-band-dark flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="ml-3 text-white">Checking admin status...</p>
       </div>
     );
   }
 
+  if (isAdmin === false) {
+    return <Navigate to="/auth" />;
+  }
+
   return (
     <div className="min-h-screen bg-band-dark">
-      <div className="container mx-auto px-4 py-8">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Shows Admin</h1>
-          <div className="flex space-x-4">
-            <Button 
-              variant="outline" 
-              className="border-band-purple text-band-purple hover:bg-band-purple/20"
-              onClick={() => setImportDialogOpen(true)}
-            >
-              <RefreshCwIcon className="mr-2 h-4 w-4" />
-              Import from Google Sheet
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-band-blue text-band-blue hover:bg-band-blue/20"
-              onClick={handleCreate}
-            >
-              <PlusCircleIcon className="mr-2 h-4 w-4" />
-              Add Show
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={handleSignOut}
-            >
-              Sign Out
-            </Button>
-          </div>
-        </header>
-
-        <div className="bg-black/50 border border-band-purple/20 rounded-lg backdrop-blur-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-white">Date</TableHead>
-                <TableHead className="text-white">Venue</TableHead>
-                <TableHead className="text-white">Location</TableHead>
-                <TableHead className="text-white">Status</TableHead>
-                <TableHead className="text-white text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-white/60 py-8">
-                    No shows found. Import from Google Sheet or add shows manually.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                shows.map((show) => (
-                  <TableRow key={show.id} className="border-b border-band-purple/20">
-                    <TableCell className="font-medium text-white">{show.date}</TableCell>
-                    <TableCell className="text-white">{show.venue}</TableCell>
-                    <TableCell className="text-white">{show.location}</TableCell>
-                    <TableCell className="text-white">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${show.is_published ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {show.is_published ? 'Published' : 'Hidden'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => togglePublished(show.id, show.is_published)}
-                          title={show.is_published ? "Hide show" : "Publish show"}
+      <div className="container mx-auto px-4 py-24">
+        <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white">Admin Dashboard</h1>
+        
+        <Tabs defaultValue="shows" className="w-full">
+          <TabsList className="mb-8">
+            <TabsTrigger value="shows">Shows Management</TabsTrigger>
+            {/* Add more tabs in the future like "Users", "Content", etc. */}
+          </TabsList>
+          
+          <TabsContent value="shows">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Show Form */}
+              <Card className="lg:col-span-1 bg-black/50 border-band-purple/20">
+                <CardHeader>
+                  <CardTitle className="text-white">
+                    {editingShow ? 'Edit Show' : 'Add New Show'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Date</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Mar 15, 2025" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="venue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Venue</FormLabel>
+                            <FormControl>
+                              <Input placeholder="The Grand Hall" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Location</FormLabel>
+                            <FormControl>
+                              <Input placeholder="New York, NY" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="ticket_link"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Ticket Link</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://tickets.example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="is_published"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-white">Published</FormLabel>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-band-purple hover:bg-band-purple/80"
+                          disabled={isSubmitting}
                         >
-                          {show.is_published ? <LockIcon className="h-4 w-4 text-white/70" /> : <UnlockIcon className="h-4 w-4 text-white/70" />}
+                          {isSubmitting ? 'Saving...' : (editingShow ? 'Update Show' : 'Add Show')}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(show)}
-                          title="Edit show"
-                        >
-                          <PencilIcon className="h-4 w-4 text-white/70" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteShow(show.id)}
-                          title="Delete show"
-                        >
-                          <TrashIcon className="h-4 w-4 text-red-500" />
-                        </Button>
+                        
+                        {editingShow && (
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            onClick={() => setEditingShow(null)}
+                            className="border-band-purple text-band-purple hover:bg-band-purple/10"
+                          >
+                            Cancel
+                          </Button>
+                        )}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                    </form>
+                  </Form>
+                  
+                  <div className="mt-6">
+                    <Button 
+                      onClick={syncWithGoogleSheet} 
+                      className="w-full bg-band-blue hover:bg-band-blue/80"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Syncing...' : 'Sync with Google Sheet'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Shows List */}
+              <Card className="lg:col-span-2 bg-black/50 border-band-purple/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Manage Shows</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {shows.length === 0 ? (
+                    <div className="text-center py-10 text-white/70">
+                      <p>No shows found. Add a new show or sync with Google Sheet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {shows.map((show) => (
+                        <div 
+                          key={show.id} 
+                          className={`p-4 border rounded-lg ${
+                            show.is_published 
+                              ? 'border-green-400/30 bg-green-950/20' 
+                              : 'border-red-400/30 bg-red-950/20'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-xl font-bold text-white mb-1">{show.venue}</h3>
+                              
+                              <div className="flex items-center mb-2 text-band-purple">
+                                <Calendar size={16} className="mr-1" />
+                                <span className="text-sm">{show.date}</span>
+                              </div>
+                              
+                              <div className="flex items-center mb-3 text-white/70">
+                                <MapPin size={14} className="mr-1" />
+                                <span className="text-sm">{show.location}</span>
+                              </div>
+                              
+                              <div className="flex items-center">
+                                <a 
+                                  href={show.ticket_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-xs flex items-center text-white/60 hover:text-white"
+                                >
+                                  <ExternalLink size={12} className="mr-1" />
+                                  Ticket Link
+                                </a>
+                                
+                                <div className="mx-3 text-white/30">•</div>
+                                
+                                <div className={`text-xs flex items-center ${
+                                  show.is_published ? 'text-green-400' : 'text-red-400'
+                                }`}>
+                                  {show.is_published ? (
+                                    <>
+                                      <CheckCircle size={12} className="mr-1" />
+                                      Published
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle size={12} className="mr-1" />
+                                      Hidden
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40 bg-black/90">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => setEditingShow(show)}
+                                  className="cursor-pointer"
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => togglePublishStatus(show.id!, !!show.is_published)}
+                                  className="cursor-pointer"
+                                >
+                                  {show.is_published ? (
+                                    <>
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                      Unpublish
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      Publish
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(show.id!)}
+                                  className="cursor-pointer text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Import Dialog */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="bg-band-dark border-band-purple/20 text-white">
-          <DialogHeader>
-            <DialogTitle>Import Shows from Google Sheet</DialogTitle>
-            <DialogDescription className="text-white/70">
-              This will import all shows from the configured Google Sheet and add them to your database.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setImportDialogOpen(false)}
-              className="border-white/20 text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={importFromGoogleSheet}
-              className="bg-band-blue text-white"
-              disabled={loading}
-            >
-              {loading ? 'Importing...' : 'Import Shows'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit/Create Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="bg-band-dark border-band-purple/20 text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle>{currentShow?.id ? 'Edit Show' : 'Create New Show'}</DialogTitle>
-            <DialogDescription className="text-white/70">
-              {currentShow?.id ? 'Update the details for this show.' : 'Add a new show to your schedule.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                Date
-              </label>
-              <Input
-                value={currentShow?.date || ''}
-                onChange={(e) => setCurrentShow(prev => prev ? {...prev, date: e.target.value} : null)}
-                placeholder="June 15, 2024"
-                className="bg-black/30 border-band-purple/30"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center">
-                <MapPinIcon className="mr-2 h-4 w-4" />
-                Venue
-              </label>
-              <Input
-                value={currentShow?.venue || ''}
-                onChange={(e) => setCurrentShow(prev => prev ? {...prev, venue: e.target.value} : null)}
-                placeholder="Venue name"
-                className="bg-black/30 border-band-purple/30"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center">
-                <MapPinIcon className="mr-2 h-4 w-4" />
-                Location
-              </label>
-              <Input
-                value={currentShow?.location || ''}
-                onChange={(e) => setCurrentShow(prev => prev ? {...prev, location: e.target.value} : null)}
-                placeholder="City, State"
-                className="bg-black/30 border-band-purple/30"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center">
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Ticket Link
-              </label>
-              <Input
-                value={currentShow?.ticket_link || ''}
-                onChange={(e) => setCurrentShow(prev => prev ? {...prev, ticket_link: e.target.value} : null)}
-                placeholder="https://..."
-                className="bg-black/30 border-band-purple/30"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2 pt-2">
-              <input
-                type="checkbox"
-                id="is_published"
-                checked={currentShow?.is_published || false}
-                onChange={(e) => setCurrentShow(prev => prev ? {...prev, is_published: e.target.checked} : null)}
-                className="rounded border-band-purple/30"
-              />
-              <label htmlFor="is_published" className="text-sm font-medium">
-                Publish this show (visible on website)
-              </label>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditDialogOpen(false)}
-              className="border-white/20 text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={saveShow}
-              className="bg-band-purple text-white"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Show'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
