@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +13,25 @@ interface Show {
   ticket_link: string;
 }
 
+function parseDateString(dateString: string): Date | null {
+  try {
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/');
+      const parsedDate = new Date(`${year}-${month}-${day}`);
+      
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) ? date : null;
+  } catch (e) {
+    console.error('Error parsing date:', dateString, e);
+    return null;
+  }
+}
+
 const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +40,6 @@ const ShowsSection = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        // First try to get shows from Supabase
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
@@ -32,14 +49,12 @@ const ShowsSection = () => {
 
         if (supabaseError) throw supabaseError;
         
-        // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
           setShows(supabaseData);
           setLoading(false);
           return;
         }
         
-        // If no data in Supabase, try to fetch from Google Sheets
         const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
           'fetch-google-sheet'
         );
@@ -49,7 +64,6 @@ const ShowsSection = () => {
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
           setShows(googleSheetsData.shows);
         } else {
-          // No shows found in either Supabase or Google Sheets
           setShows([]);
         }
       } catch (error: any) {
@@ -67,30 +81,23 @@ const ShowsSection = () => {
     fetchShows();
   }, []);
 
-  // Format the date for display
   const formatDate = (dateString: string) => {
-    try {
-      // Parse the date string in dd/MM/yyyy format
-      const [day, month, year] = dateString.split('/').map(n => parseInt(n, 10));
-      const date = new Date(year, month - 1, day); // Month is 0-indexed in JS Date
-      
-      if (!isNaN(date.getTime())) {
-        return new Intl.DateTimeFormat('en-US', {
-          weekday: 'short',
-          month: 'short', 
-          day: 'numeric',
-          year: 'numeric'
-        }).format(date);
-      }
-      return dateString; // Fall back to original string if parsing fails
-    } catch (e) {
-      return dateString; // Return original date string in case of error
+    const date = parseDateString(dateString);
+    
+    if (date) {
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
     }
+    
+    return dateString;
   };
 
   return (
     <section id="shows" className="py-20 bg-gradient-to-b from-band-dark to-black relative overflow-hidden">
-      {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-cosmic"></div>
       <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
       <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-band-purple/10 blur-3xl"></div>
