@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, ArrowLeft } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
@@ -36,7 +36,7 @@ function parseDateString(dateString: string): Date | null {
   }
 }
 
-const ShowsSection = () => {
+const AllShows = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -49,8 +49,7 @@ const ShowsSection = () => {
           .from('shows')
           .select('*')
           .eq('is_published', true)
-          .order('date', { ascending: true })
-          .limit(4);
+          .order('date', { ascending: true });
 
         if (supabaseError) throw supabaseError;
         
@@ -110,35 +109,33 @@ const ShowsSection = () => {
   };
 
   return (
-    <section id="shows" className="py-20 bg-gradient-to-b from-band-dark to-black relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-cosmic"></div>
-      <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
-      <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-band-purple/10 blur-3xl"></div>
-      
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-            UPCOMING <span className="text-band-purple">SHOWS</span>
-          </h2>
-          <div className="h-1 w-20 bg-band-purple mx-auto mb-8"></div>
-          <p className="text-white/70 max-w-2xl mx-auto">
-            Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!
-          </p>
+    <div className="min-h-screen bg-band-dark text-white">
+      <div className="container mx-auto px-4 py-24">
+        <div className="flex items-center mb-8">
+          <Link to="/">
+            <Button variant="ghost" className="text-white mr-4" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl md:text-4xl font-bold text-white text-glow">
+            ALL <span className="text-band-purple">SHOWS</span>
+          </h1>
         </div>
+        
+        <div className="h-1 w-20 bg-band-purple mb-8"></div>
         
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">Loading upcoming shows...</p>
+            <p className="mt-4 text-white/70">Loading shows...</p>
           </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-white/70">No upcoming shows scheduled at the moment.</p>
+            <p className="text-white/70">No shows scheduled at the moment.</p>
             <p className="text-white/70 mt-2">Check back soon!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {shows.map((show, index) => (
               <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
                 <CardContent className="p-6">
@@ -166,33 +163,9 @@ const ShowsSection = () => {
             ))}
           </div>
         )}
-        
-        <div className="text-center mt-12 flex flex-col sm:flex-row justify-center gap-4">
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="border-band-blue text-band-blue hover:bg-band-blue/10 glow-blue"
-            asChild
-          >
-            <a href="#contact">
-              CONTACT FOR BOOKINGS
-            </a>
-          </Button>
-          
-          <Button 
-            size="lg" 
-            variant="default" 
-            className="bg-band-purple hover:bg-band-purple/90 text-white glow-purple"
-            asChild
-          >
-            <Link to="/shows">
-              VIEW ALL SHOWS
-            </Link>
-          </Button>
-        </div>
       </div>
-    </section>
+    </div>
   );
 };
 
-export default ShowsSection;
+export default AllShows;
