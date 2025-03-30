@@ -70,9 +70,9 @@ serve(async (req) => {
         
         // Filter out past events
         try {
-          // Parse the date from column A
-          // This assumes the date format is MM/DD/YYYY or similar recognized format
-          const eventDate = new Date(row[0]);
+          // Parse the date from column A in format dd/MM/yyyy
+          const [day, month, year] = row[0].split('/').map(n => parseInt(n, 10));
+          const eventDate = new Date(year, month - 1, day); // Month is 0-indexed in JS Date
           return !isNaN(eventDate.getTime()) && eventDate >= currentDate;
         } catch (e) {
           console.error("Error parsing date:", row[0], e);

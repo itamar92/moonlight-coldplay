@@ -70,8 +70,10 @@ const ShowsSection = () => {
   // Format the date for display
   const formatDate = (dateString: string) => {
     try {
-      // Try to parse the date and format it nicely
-      const date = new Date(dateString);
+      // Parse the date string in dd/MM/yyyy format
+      const [day, month, year] = dateString.split('/').map(n => parseInt(n, 10));
+      const date = new Date(year, month - 1, day); // Month is 0-indexed in JS Date
+      
       if (!isNaN(date.getTime())) {
         return new Intl.DateTimeFormat('en-US', {
           weekday: 'short',
