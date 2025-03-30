@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom colors for the Moonlight band site
+				band: {
+					purple: "#9b87f5",
+					pink: "#D946EF",
+					blue: "#0EA5E9",
+					dark: "#0F0F23",
 				}
 			},
 			borderRadius: {
@@ -84,11 +92,31 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' },
+				},
+				'pulse-glow': {
+					'0%, 100%': { 
+						opacity: '1',
+						transform: 'scale(1)',
+					},
+					'50%': { 
+						opacity: '0.8',
+						transform: 'scale(1.05)',
+					},
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'float': 'float 6s ease-in-out infinite',
+				'pulse-glow': 'pulse-glow 4s ease-in-out infinite',
+			},
+			backgroundImage: {
+				'hero-pattern': 'linear-gradient(to bottom, rgba(15, 15, 35, 0.7), rgba(15, 15, 35, 0.9)), url("/public/lovable-uploads/17b5ab98-9e49-4a35-a8f3-d56df8986bc7.png")',
+				'gradient-cosmic': 'linear-gradient(90deg, #9b87f5 0%, #D946EF 50%, #0EA5E9 100%)',
 			}
 		}
 	},
