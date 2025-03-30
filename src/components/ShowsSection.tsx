@@ -14,6 +14,27 @@ interface Show {
   ticket_link: string;
 }
 
+// Parse a date string in dd/MM/yyyy format to a Date object
+function parseDateString(dateString: string): Date | null {
+  try {
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/');
+      const parsedDate = new Date(`${year}-${month}-${day}`);
+      
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    
+    // Fallback to standard date parsing
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) ? date : null;
+  } catch (e) {
+    console.error('Error parsing date:', dateString, e);
+    return null;
+  }
+}
+
 const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,9 +91,10 @@ const ShowsSection = () => {
   // Format the date for display
   const formatDate = (dateString: string) => {
     try {
-      // Try to parse the date and format it nicely
-      const date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
+      // Parse the date using our custom function for dd/MM/yyyy format
+      const date = parseDateString(dateString);
+      
+      if (date && !isNaN(date.getTime())) {
         return new Intl.DateTimeFormat('en-US', {
           weekday: 'short',
           month: 'short', 
