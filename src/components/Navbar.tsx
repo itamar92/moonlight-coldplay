@@ -105,7 +105,7 @@ const Navbar = () => {
   };
 
   // Define spacing class based on language
-  const menuSpacing = language === 'he' ? 'space-x-10' : 'space-x-8';
+  const menuSpacing = language === 'he' ? 'space-x-4 md:space-x-6' : 'space-x-4 md:space-x-8';
 
   return (
     <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, MapPin, Ticket, Clock, Plus, Trash2, Edit, Eye, EyeOff } from "lucide-react";
+import { Calendar, MapPin, Ticket, Clock, Plus, Trash2, Edit, Eye, EyeOff, Image } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Show {
   id: string;
@@ -14,6 +15,7 @@ interface Show {
   venue: string;
   location: string;
   ticket_link: string;
+  image_url?: string;
   is_published: boolean;
 }
 
@@ -21,12 +23,14 @@ const ShowsEditor = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingShow, setEditingShow] = useState<Show | null>(null);
+  const { language } = useLanguage();
   
   // Form state
   const [date, setDate] = useState('');
   const [venue, setVenue] = useState('');
   const [location, setLocation] = useState('');
   const [ticketLink, setTicketLink] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [isPublished, setIsPublished] = useState(true);
   
   const { toast } = useToast();
@@ -50,8 +54,10 @@ const ShowsEditor = () => {
       console.error('Error fetching shows:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to load shows. Please try again.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' 
+          ? 'Failed to load shows. Please try again.' 
+          : 'לא ניתן לטעון הופעות. אנא נסה שוב.',
       });
     } finally {
       setLoading(false);
@@ -64,6 +70,7 @@ const ShowsEditor = () => {
     setVenue('');
     setLocation('');
     setTicketLink('');
+    setImageUrl('');
     setIsPublished(true);
   };
 
@@ -73,11 +80,16 @@ const ShowsEditor = () => {
     setVenue(show.venue);
     setLocation(show.location);
     setTicketLink(show.ticket_link);
+    setImageUrl(show.image_url || '');
     setIsPublished(show.is_published !== false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this show?')) return;
+    const confirmMessage = language === 'en' 
+      ? 'Are you sure you want to delete this show?' 
+      : 'האם אתה בטוח שברצונך למחוק הופעה זו?';
+    
+    if (!confirm(confirmMessage)) return;
     
     try {
       const { error } = await supabase
@@ -90,15 +102,15 @@ const ShowsEditor = () => {
       setShows(shows.filter(show => show.id !== id));
       
       toast({
-        title: 'Success',
-        description: 'Show deleted successfully.',
+        title: language === 'en' ? 'Success' : 'הצלחה',
+        description: language === 'en' ? 'Show deleted successfully.' : 'ההופעה נמחקה בהצלחה.',
       });
     } catch (error) {
       console.error('Error deleting show:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to delete show.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' ? 'Failed to delete show.' : 'לא ניתן למחוק את ההופעה.',
       });
     }
   };
@@ -119,15 +131,19 @@ const ShowsEditor = () => {
       ));
       
       toast({
-        title: 'Success',
-        description: `Show ${newPublishState ? 'published' : 'unpublished'} successfully.`,
+        title: language === 'en' ? 'Success' : 'הצלחה',
+        description: language === 'en' 
+          ? `Show ${newPublishState ? 'published' : 'unpublished'} successfully.` 
+          : `ההופעה ${newPublishState ? 'פורסמה' : 'הוסרה מפרסום'} בהצלחה.`,
       });
     } catch (error) {
       console.error('Error toggling publish state:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to update show visibility.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' 
+          ? 'Failed to update show visibility.' 
+          : 'לא ניתן לעדכן את נראות ההופעה.',
       });
     }
   };
@@ -136,8 +152,10 @@ const ShowsEditor = () => {
     if (!date) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter a date for the show.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' 
+          ? 'Please enter a date for the show.' 
+          : 'אנא הזן תאריך להופעה.',
       });
       return false;
     }
@@ -145,8 +163,8 @@ const ShowsEditor = () => {
     if (!venue) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter a venue name.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' ? 'Please enter a venue name.' : 'אנא הזן שם מקום הופעה.',
       });
       return false;
     }
@@ -154,8 +172,8 @@ const ShowsEditor = () => {
     if (!location) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter a location.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' ? 'Please enter a location.' : 'אנא הזן מיקום.',
       });
       return false;
     }
@@ -163,8 +181,8 @@ const ShowsEditor = () => {
     if (!ticketLink) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter a ticket link.',
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' ? 'Please enter a ticket link.' : 'אנא הזן קישור לכרטיסים.',
       });
       return false;
     }
@@ -189,6 +207,7 @@ const ShowsEditor = () => {
             venue,
             location,
             ticket_link: ticketLink,
+            image_url: imageUrl,
             is_published: isPublished,
             updated_at: new Date().toISOString()
           })
@@ -204,14 +223,15 @@ const ShowsEditor = () => {
                 venue, 
                 location, 
                 ticket_link: ticketLink,
+                image_url: imageUrl,
                 is_published: isPublished 
               } 
             : show
         ));
         
         toast({
-          title: 'Success',
-          description: 'Show updated successfully!',
+          title: language === 'en' ? 'Success' : 'הצלחה',
+          description: language === 'en' ? 'Show updated successfully!' : 'ההופעה עודכנה בהצלחה!',
         });
       } else {
         // Create new show
@@ -220,6 +240,7 @@ const ShowsEditor = () => {
           venue,
           location,
           ticket_link: ticketLink,
+          image_url: imageUrl,
           is_published: isPublished
         };
         
@@ -234,8 +255,8 @@ const ShowsEditor = () => {
           setShows([...shows, data[0]]);
           
           toast({
-            title: 'Success',
-            description: 'New show added successfully!',
+            title: language === 'en' ? 'Success' : 'הצלחה',
+            description: language === 'en' ? 'New show added successfully!' : 'הופעה חדשה נוספה בהצלחה!',
           });
         }
       }
@@ -245,8 +266,10 @@ const ShowsEditor = () => {
       console.error('Error saving show:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: `Failed to ${editingShow ? 'update' : 'add'} show.`,
+        title: language === 'en' ? 'Error' : 'שגיאה',
+        description: language === 'en' 
+          ? `Failed to ${editingShow ? 'update' : 'add'} show.` 
+          : `לא ניתן ${editingShow ? 'לעדכן' : 'להוסיף'} הופעה.`,
       });
     } finally {
       setLoading(false);
@@ -281,17 +304,43 @@ const ShowsEditor = () => {
     }
   };
 
+  // Translations
+  const texts = {
+    editShow: language === 'en' ? 'Edit Show' : 'עריכת הופעה',
+    addNewShow: language === 'en' ? 'Add New Show' : 'הוספת הופעה חדשה',
+    date: language === 'en' ? 'Date (dd/mm/yyyy)' : 'תאריך (dd/mm/yyyy)',
+    dateFormat: language === 'en' ? 'Format: DD/MM/YYYY (e.g. 25/12/2023)' : 'פורמט: DD/MM/YYYY (לדוגמה: 25/12/2023)',
+    venue: language === 'en' ? 'Venue' : 'מקום הופעה',
+    location: language === 'en' ? 'Location' : 'מיקום',
+    ticketLink: language === 'en' ? 'Ticket Link' : 'קישור לכרטיסים',
+    imageUrl: language === 'en' ? 'Image URL' : 'כתובת תמונה',
+    showOnWebsite: language === 'en' ? 'Show on website' : 'הצג באתר',
+    cancel: language === 'en' ? 'Cancel' : 'ביטול',
+    update: language === 'en' ? 'Update Show' : 'עדכן הופעה',
+    add: language === 'en' ? 'Add Show' : 'הוסף הופעה',
+    saving: language === 'en' ? 'Saving...' : 'שומר...',
+    allShows: language === 'en' ? 'All Shows' : 'כל ההופעות',
+    loading: language === 'en' ? 'Loading shows...' : 'טוען הופעות...',
+    noShowsYet: language === 'en' ? 'No shows added yet.' : 'טרם נוספו הופעות.',
+    addFirstShow: language === 'en' ? 'Add your first show using the form above!' : 'הוסף את ההופעה הראשונה שלך באמצעות הטופס למעלה!',
+    viewTickets: language === 'en' ? 'View Tickets' : 'צפה בכרטיסים',
+    published: language === 'en' ? 'Published' : 'מפורסם',
+    hidden: language === 'en' ? 'Hidden' : 'מוסתר',
+    edit: language === 'en' ? 'Edit' : 'עריכה',
+    delete: language === 'en' ? 'Delete' : 'מחיקה',
+  };
+
   return (
     <div className="space-y-8 text-white">
       {/* Add/Edit Show Form */}
       <form onSubmit={handleSubmit} className="space-y-4 p-6 bg-black/30 rounded-lg border border-white/10">
         <h3 className="text-lg font-medium text-white mb-4">
-          {editingShow ? 'Edit Show' : 'Add New Show'}
+          {editingShow ? texts.editShow : texts.addNewShow}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date (dd/mm/yyyy)</Label>
+            <Label htmlFor="date">{texts.date}</Label>
             <div className="flex">
               <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-white/20 bg-black/50">
                 <Calendar size={18} />
@@ -304,11 +353,11 @@ const ShowsEditor = () => {
                 placeholder="e.g. 25/12/2023"
               />
             </div>
-            <p className="text-xs text-white/60">Format: DD/MM/YYYY (e.g. 25/12/2023)</p>
+            <p className="text-xs text-white/60">{texts.dateFormat}</p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="venue">Venue</Label>
+            <Label htmlFor="venue">{texts.venue}</Label>
             <div className="flex">
               <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-white/20 bg-black/50">
                 <MapPin size={18} />
@@ -324,7 +373,7 @@ const ShowsEditor = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">{texts.location}</Label>
             <Input
               id="location"
               value={location}
@@ -335,7 +384,7 @@ const ShowsEditor = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="ticketLink">Ticket Link</Label>
+            <Label htmlFor="ticketLink">{texts.ticketLink}</Label>
             <div className="flex">
               <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-white/20 bg-black/50">
                 <Ticket size={18} />
@@ -349,6 +398,22 @@ const ShowsEditor = () => {
               />
             </div>
           </div>
+          
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="imageUrl">{texts.imageUrl}</Label>
+            <div className="flex">
+              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-white/20 bg-black/50">
+                <Image size={18} />
+              </span>
+              <Input
+                id="imageUrl"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="rounded-l-none bg-black/50"
+                placeholder="e.g. https://example.com/image.jpg"
+              />
+            </div>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -359,7 +424,7 @@ const ShowsEditor = () => {
             onChange={(e) => setIsPublished(e.target.checked)}
             className="rounded border-white/20 bg-black/50 text-band-purple"
           />
-          <Label htmlFor="isPublished">Show on website</Label>
+          <Label htmlFor="isPublished">{texts.showOnWebsite}</Label>
         </div>
         
         <div className="flex justify-between pt-4">
@@ -369,31 +434,31 @@ const ShowsEditor = () => {
             onClick={resetForm}
             className="border-white/20 text-white hover:bg-white/10"
           >
-            Cancel
+            {texts.cancel}
           </Button>
           <Button
             type="submit"
             className="bg-band-purple hover:bg-band-purple/80"
             disabled={loading}
           >
-            {loading ? 'Saving...' : (editingShow ? 'Update Show' : 'Add Show')}
+            {loading ? texts.saving : (editingShow ? texts.update : texts.add)}
           </Button>
         </div>
       </form>
       
       {/* Shows List */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold mb-4">All Shows</h3>
+        <h3 className="text-xl font-bold mb-4">{texts.allShows}</h3>
         
         {loading && !shows.length ? (
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">Loading shows...</p>
+            <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16 border border-white/10 rounded-lg">
-            <p className="text-white/70">No shows added yet.</p>
-            <p className="text-white/70 mt-2">Add your first show using the form above!</p>
+            <p className="text-white/70">{texts.noShowsYet}</p>
+            <p className="text-white/70 mt-2">{texts.addFirstShow}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -402,6 +467,20 @@ const ShowsEditor = () => {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between">
                     <div className="space-y-2">
+                      {show.image_url && (
+                        <div className="w-full md:w-40 h-24 mb-2 overflow-hidden rounded">
+                          <img 
+                            src={show.image_url} 
+                            alt={show.venue} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // If image fails to load, hide the image container
+                              const target = e.target as HTMLImageElement;
+                              target.parentElement!.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
                       <div className="flex items-center mb-1">
                         <Calendar size={18} className="mr-2 text-band-purple" />
                         <span className="font-medium">{formatDate(show.date)}</span>
@@ -418,7 +497,7 @@ const ShowsEditor = () => {
                         className="inline-flex items-center text-band-purple hover:text-band-purple/80"
                       >
                         <Ticket size={16} className="mr-2" />
-                        <span>View Tickets</span>
+                        <span>{texts.viewTickets}</span>
                       </a>
                     </div>
                     
@@ -430,9 +509,9 @@ const ShowsEditor = () => {
                         onClick={() => togglePublish(show)}
                       >
                         {show.is_published ? (
-                          <><Eye size={16} className="mr-2" /> Published</>
+                          <><Eye size={16} className="mr-2" /> {texts.published}</>
                         ) : (
-                          <><EyeOff size={16} className="mr-2" /> Hidden</>
+                          <><EyeOff size={16} className="mr-2" /> {texts.hidden}</>
                         )}
                       </Button>
                       <Button 
@@ -441,7 +520,7 @@ const ShowsEditor = () => {
                         className="border-white/20 text-white hover:bg-white/10"
                         onClick={() => handleEdit(show)}
                       >
-                        <Edit size={16} className="mr-2" /> Edit
+                        <Edit size={16} className="mr-2" /> {texts.edit}
                       </Button>
                       <Button 
                         variant="outline" 
@@ -449,7 +528,7 @@ const ShowsEditor = () => {
                         className="border-white/20 text-white hover:bg-red-900/70"
                         onClick={() => handleDelete(show.id)}
                       >
-                        <Trash2 size={16} className="mr-2" /> Delete
+                        <Trash2 size={16} className="mr-2" /> {texts.delete}
                       </Button>
                     </div>
                   </div>
