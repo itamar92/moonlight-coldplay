@@ -101,8 +101,10 @@ const HeroSection = () => {
           const heroContentData = data.content as Record<string, any>;
           
           if (isValidMultilingualContent(heroContentData)) {
-            // We have valid multilingual content
-            setContent(heroContentData as MultilingualHeroContent);
+            // We have valid multilingual content 
+            // Explicitly parse JSON to ensure proper type handling
+            const parsedContent = JSON.parse(JSON.stringify(heroContentData)) as MultilingualHeroContent;
+            setContent(parsedContent);
           } else if (isValidHeroContent(heroContentData)) {
             // We have legacy single-language content - convert to multilingual format
             setContent({

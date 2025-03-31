@@ -183,11 +183,14 @@ const HeroEditor = () => {
       };
       
       // Convert the strongly typed object to a JSON object that Supabase can handle
+      // First convert to unknown, then to Json to avoid TypeScript errors
+      const jsonContent = JSON.parse(JSON.stringify(updatedContent)) as unknown as Json;
+      
       const { error } = await supabase
         .from('content')
         .upsert({
           section: 'hero',
-          content: updatedContent as Json,
+          content: jsonContent,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'section'
