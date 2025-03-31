@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Home } from 'lucide-react';
 import HeroEditor from '../components/admin/HeroEditor';
 import ShowsEditor from '../components/admin/ShowsEditor';
 import MediaEditor from '../components/admin/MediaEditor';
@@ -62,7 +63,15 @@ const ContentEditor = () => {
   return (
     <div className="min-h-screen bg-band-dark">
       <div className="container mx-auto px-4 py-24">
-        <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white">Content Editor</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-white">Content Editor</h1>
+          <Button variant="outline" className="border-band-pink text-band-pink hover:bg-band-pink/10" asChild>
+            <Link to="/" className="flex items-center gap-2">
+              <Home size={18} />
+              Back to Homepage
+            </Link>
+          </Button>
+        </div>
         
         <Tabs defaultValue="hero" className="w-full">
           <TabsList className="mb-8">
