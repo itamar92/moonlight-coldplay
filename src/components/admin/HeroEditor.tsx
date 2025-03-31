@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Json } from '@/integrations/supabase/types';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface HeroContent {
   title: string;
@@ -80,45 +82,68 @@ const isValidMultilingualContent = (obj: any): obj is MultilingualHeroContent =>
 const HeroEditor = () => {
   const [content, setContent] = useState<MultilingualHeroContent>(defaultContent);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [currentLanguage, setCurrentLanguage] = useState<'en' | 'he'>('en');
 
   useEffect(() => {
     const fetchContent = async () => {
       setLoading(true);
+      setError(null);
       
       try {
+        console.log('Fetching hero content for editor...');
+        
         const { data, error } = await supabase
           .from('content')
           .select('*')
           .eq('section', 'hero')
           .single();
         
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching hero content:', error);
+        if (error) {
+          if (error.code !== 'PGRST116') { // Not found error
+            console.error('Error fetching hero content:', error);
+            setError('Failed to load content. Please try refreshing the page.');
+          } else {
+            console.log('No existing hero content found, using defaults');
+          }
           return;
         }
         
+        console.log('Hero content fetched successfully:', data);
+        
         if (data && data.content) {
-          // Safely handle the content data with proper type checking
-          const heroContentData = data.content as Record<string, any>;
-          
-          // Check if we have multilingual content or legacy single-language content
-          if (isValidMultilingualContent(heroContentData)) {
-            setContent(heroContentData);
-          } else if (isValidHeroContent(heroContentData)) {
-            // Convert legacy format to multilingual format
-            setContent({
-              en: heroContentData as HeroContent,
-              he: defaultContent.he
-            });
-          } else {
-            console.error('Hero content has invalid structure:', heroContentData);
+          try {
+            // Safely handle the content data with proper type checking
+            const heroContentData = data.content as Record<string, any>;
+            
+            // Check if we have multilingual content or legacy single-language content
+            if (isValidMultilingualContent(heroContentData)) {
+              console.log('Valid multilingual content detected');
+              setContent(heroContentData);
+            } else if (isValidHeroContent(heroContentData)) {
+              // Convert legacy format to multilingual format
+              console.log('Legacy single-language content detected, converting to multilingual');
+              setContent({
+                en: heroContentData as HeroContent,
+                he: defaultContent.he
+              });
+            } else {
+              console.error('Hero content has invalid structure:', heroContentData);
+              setError('The stored content has an invalid format. Using default values.');
+            }
+          } catch (parseError) {
+            console.error('Error parsing hero content:', parseError);
+            setError('Failed to parse stored content. Using default values.');
           }
+        } else {
+          console.log('No content data found, using defaults');
         }
       } catch (error) {
         console.error('Error fetching hero content:', error);
+        setError('An unexpected error occurred while loading content.');
       } finally {
         setLoading(false);
       }
@@ -146,26 +171,50 @@ const HeroEditor = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
+    setError(null);
     
     try {
       let logoUrl = content[currentLanguage].logo_url;
       
       if (logoFile) {
+        console.log('Uploading new logo file...');
         const fileExt = logoFile.name.split('.').pop();
         const fileName = `hero-logo-${Date.now()}.${fileExt}`;
         
+        // Check if storage bucket exists, create if not
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const contentBucketExists = buckets?.some(bucket => bucket.name === 'content');
+        
+        if (!contentBucketExists) {
+          console.log('Creating content bucket...');
+          const { error: createBucketError } = await supabase.storage.createBucket('content', {
+            public: true
+          });
+          
+          if (createBucketError) {
+            throw new Error(`Failed to create storage bucket: ${createBucketError.message}`);
+          }
+        }
+        
         const { error: uploadError, data: uploadData } = await supabase.storage
           .from('content')
-          .upload(fileName, logoFile);
+          .upload(fileName, logoFile, {
+            upsert: true
+          });
           
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          throw new Error(`Upload failed: ${uploadError.message}`);
+        }
+        
+        console.log('Logo uploaded successfully');
         
         const { data: publicUrlData } = supabase.storage
           .from('content')
           .getPublicUrl(fileName);
           
         logoUrl = publicUrlData.publicUrl;
+        console.log('Logo public URL:', logoUrl);
         
         // Update logo URL for both languages
         setContent(prev => ({
@@ -182,6 +231,8 @@ const HeroEditor = () => {
         }
       };
       
+      console.log('Saving updated content to database:', updatedContent);
+      
       // Convert the strongly typed object to a JSON object that Supabase can handle
       // First convert to unknown, then to Json to avoid TypeScript errors
       const jsonContent = JSON.parse(JSON.stringify(updatedContent)) as unknown as Json;
@@ -196,7 +247,11 @@ const HeroEditor = () => {
           onConflict: 'section'
         });
         
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Database save failed: ${error.message}`);
+      }
+      
+      console.log('Content saved successfully');
       
       toast({
         title: 'Success',
@@ -204,13 +259,14 @@ const HeroEditor = () => {
       });
     } catch (error) {
       console.error('Error updating hero content:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update hero content');
       toast({
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to update hero content. Please try again.',
       });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -240,6 +296,14 @@ const HeroEditor = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       <Tabs value={currentLanguage} onValueChange={(value) => setCurrentLanguage(value as 'en' | 'he')}>
         <TabsList className="mb-4">
           <TabsTrigger value="en">English</TabsTrigger>
@@ -364,9 +428,9 @@ const HeroEditor = () => {
           <Button 
             type="submit" 
             className="w-full bg-band-purple hover:bg-band-purple/80" 
-            disabled={loading}
+            disabled={loading || saving}
           >
-            {loading ? 'Saving...' : `Save ${currentLanguage === 'en' ? 'English' : 'Hebrew'} Content`}
+            {saving ? 'Saving...' : `Save ${currentLanguage === 'en' ? 'English' : 'Hebrew'} Content`}
           </Button>
         </form>
       </Tabs>

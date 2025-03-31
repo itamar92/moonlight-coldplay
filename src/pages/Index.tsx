@@ -7,8 +7,11 @@ import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const { toast } = useToast();
+
   // Only run once when the app initializes to ensure admin user exists
   useEffect(() => {
     const createAdminUser = async () => {
@@ -16,7 +19,7 @@ const Index = () => {
         // Check if the admin user already exists by trying to sign in
         const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
           email: 'itamar92@gmail.com',
-          password: 'admin',
+          password: 'admin123456', // Use a longer password to meet requirements
         });
         
         // If user exists and sign-in was successful, we're done
@@ -38,10 +41,11 @@ const Index = () => {
         
         // If sign-in failed because the user doesn't exist, create the user
         if (signInError) {
+          console.log('Creating admin user...');
           // Try to create the admin user
           const { data: newUser, error: signupError } = await supabase.auth.signUp({
             email: 'itamar92@gmail.com',
-            password: 'admin',
+            password: 'admin123456', // Use a longer password to meet requirements
           });
           
           if (signupError) {
@@ -51,6 +55,7 @@ const Index = () => {
           
           // If user was created successfully, set them as admin in profiles table
           if (newUser?.user) {
+            console.log('Admin user created:', newUser.user.id);
             // Wait a moment for the user to be fully created
             setTimeout(async () => {
               const { error: updateError } = await supabase

@@ -38,6 +38,9 @@ serve(async (req) => {
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
     const SHEET_ID = Deno.env.get("GOOGLE_SHEET_ID");
     
+    console.log("API Key exists:", !!GOOGLE_API_KEY);
+    console.log("Sheet ID exists:", !!SHEET_ID);
+    
     if (!GOOGLE_API_KEY || !SHEET_ID) {
       throw new Error("Missing required environment variables");
     }
@@ -49,8 +52,11 @@ serve(async (req) => {
     console.log(`Fetching data from sheet: ${SHEET_NAME}, range: ${RANGE}`);
     
     // Fetch data from Google Sheets
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${GOOGLE_API_KEY}`;
+    console.log("Fetching from URL:", url);
+    
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${GOOGLE_API_KEY}`,
+      url,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -58,14 +64,16 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Google Sheets API error: ${error}`);
+      const errorText = await response.text();
+      console.error(`Google Sheets API error (${response.status}):`, errorText);
+      throw new Error(`Google Sheets API error (${response.status}): ${errorText}`);
     }
 
     const data = await response.json();
     console.log(`Received data from Google Sheets: ${data.values?.length || 0} rows`);
     
     if (!data.values || data.values.length === 0) {
+      console.log("No data rows found in sheet");
       return new Response(JSON.stringify({ shows: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -76,12 +84,19 @@ serve(async (req) => {
     // No longer filtering out past events, only filtering private events
     const shows = data.values
       .filter(row => {
+        // Log each row for debugging
+        console.log("Processing row:", JSON.stringify(row));
+        
         if (!row[0] || !row[1] || !row[3] || !row[4]) {
+          console.log("Skipping row due to missing essential data");
           return false; // Skip rows with missing essential data
         }
         
         // Filter out private events
         const isPrivate = (row[5] || "").toLowerCase() === "true";
+        if (isPrivate) {
+          console.log("Skipping private event");
+        }
         return !isPrivate;
       })
       .map((row) => ({
@@ -93,6 +108,7 @@ serve(async (req) => {
       }));
 
     console.log(`Filtered to ${shows.length} valid shows`);
+    console.log("Final shows data:", JSON.stringify(shows));
     
     return new Response(JSON.stringify({ shows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

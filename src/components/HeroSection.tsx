@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Edit } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { Json } from '@/integrations/supabase/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface HeroContent {
   title: string;
@@ -81,43 +82,77 @@ const HeroSection = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [session, setSession] = useState<any>(null);
   const { language } = useLanguage();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
+        setLoading(true);
+        console.log('Fetching hero content...');
+        
         const { data, error } = await supabase
           .from('content')
           .select('*')
           .eq('section', 'hero')
           .single();
         
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching hero content:', error);
+        if (error) {
+          if (error.code !== 'PGRST116') { // Not found error
+            console.error('Error fetching hero content:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Error loading content',
+              description: 'There was a problem loading the hero content.'
+            });
+          } else {
+            console.log('Hero content not found in database, using defaults');
+          }
+          setLoading(false);
           return;
         }
         
+        console.log('Hero content fetched successfully:', data);
+        
         if (data && data.content) {
-          // Try to parse the content as multilingual content
-          const heroContentData = data.content as Record<string, any>;
-          
-          if (isValidMultilingualContent(heroContentData)) {
-            // We have valid multilingual content 
-            // Explicitly parse JSON to ensure proper type handling
-            const parsedContent = JSON.parse(JSON.stringify(heroContentData)) as MultilingualHeroContent;
-            setContent(parsedContent);
-          } else if (isValidHeroContent(heroContentData)) {
-            // We have legacy single-language content - convert to multilingual format
-            setContent({
-              en: heroContentData as HeroContent,
-              he: defaultContent.he // Use default for Hebrew
+          try {
+            // Try to parse the content as multilingual content
+            const heroContentData = data.content as Record<string, any>;
+            
+            if (isValidMultilingualContent(heroContentData)) {
+              console.log('Valid multilingual content detected');
+              setContent(heroContentData);
+            } else if (isValidHeroContent(heroContentData)) {
+              console.log('Legacy single-language content detected, converting to multilingual');
+              setContent({
+                en: heroContentData as HeroContent,
+                he: defaultContent.he // Use default for Hebrew
+              });
+            } else {
+              console.error('Hero content has invalid structure:', heroContentData);
+              toast({
+                variant: 'destructive',
+                title: 'Content format error',
+                description: 'The hero content has an invalid structure. Using defaults.'
+              });
+            }
+          } catch (parseError) {
+            console.error('Error parsing hero content:', parseError);
+            toast({
+              variant: 'destructive',
+              title: 'Content parsing error',
+              description: 'Could not parse the hero content. Using defaults.'
             });
-          } else {
-            // Handle invalid content structure by keeping defaults
-            console.error('Hero content has invalid structure:', heroContentData);
           }
+        } else {
+          console.log('No content data found, using defaults');
         }
       } catch (error) {
         console.error('Error in hero content fetch:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error loading content',
+          description: 'There was a problem loading the hero content.'
+        });
       } finally {
         setLoading(false);
       }
@@ -127,19 +162,34 @@ const HeroSection = () => {
     
     // Check for session and admin status
     const checkAuth = async () => {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      
-      if (session) {
-        // Check if user is admin
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-          
-        setIsAdmin(!!profileData?.is_admin);
+      try {
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          return;
+        }
+        
+        setSession(session);
+        
+        if (session) {
+          // Check if user is admin
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Profile fetch error:', profileError);
+            return;
+          }
+            
+          setIsAdmin(!!profileData?.is_admin);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
       }
     };
     
@@ -167,7 +217,7 @@ const HeroSection = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [toast]);
 
   // Get the appropriate content based on the current language
   const currentContent = content[language] || content.en;
