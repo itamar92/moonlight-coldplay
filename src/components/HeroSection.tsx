@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Json } from '@/integrations/supabase/types';
 import { Link } from 'react-router-dom';
 import { Edit } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface HeroContent {
   title: string;
@@ -18,15 +17,32 @@ interface HeroContent {
   logo_url: string;
 }
 
-const defaultContent: HeroContent = {
-  title: 'MOONLIGHT',
-  subtitle: 'COLDPLAY TRIBUTE BAND',
-  description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision. Join us on a musical journey through the stars.',
-  button1_text: 'UPCOMING SHOWS',
-  button1_link: '#shows',
-  button2_text: 'FOLLOW US',
-  button2_link: '#',
-  logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+interface MultilingualHeroContent {
+  en: HeroContent;
+  he: HeroContent;
+}
+
+const defaultContent: MultilingualHeroContent = {
+  en: {
+    title: 'MOONLIGHT',
+    subtitle: 'COLDPLAY TRIBUTE BAND',
+    description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision. Join us on a musical journey through the stars.',
+    button1_text: 'UPCOMING SHOWS',
+    button1_link: '#shows',
+    button2_text: 'FOLLOW US',
+    button2_link: '#',
+    logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+  },
+  he: {
+    title: 'מונלייט',
+    subtitle: 'להקת מחווה לקולדפליי',
+    description: 'חווה את הקסם של המוזיקה האיקונית של קולדפליי בהופעה חיה עם תשוקה ודיוק. הצטרף אלינו למסע מוזיקלי בין הכוכבים.',
+    button1_text: 'הופעות קרובות',
+    button1_link: '#shows',
+    button2_text: 'עקבו אחרינו',
+    button2_link: '#',
+    logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+  }
 };
 
 // Helper function to validate if an object is a valid HeroContent
@@ -46,11 +62,23 @@ const isValidHeroContent = (obj: any): obj is HeroContent => {
   );
 };
 
+// Helper function to validate multilingual content
+const isValidMultilingualContent = (obj: any): obj is MultilingualHeroContent => {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    !Array.isArray(obj) &&
+    isValidHeroContent(obj.en) &&
+    isValidHeroContent(obj.he)
+  );
+};
+
 const HeroSection = () => {
-  const [content, setContent] = useState<HeroContent>(defaultContent);
+  const [content, setContent] = useState<MultilingualHeroContent>(defaultContent);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [session, setSession] = useState<any>(null);
+  const { language } = useLanguage();
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -67,13 +95,20 @@ const HeroSection = () => {
         }
         
         if (data && data.content) {
-          // Safely handle the content data with proper type checking
-          const heroContentData = data.content;
+          // Try to parse the content as multilingual content
+          const heroContentData = data.content as Record<string, any>;
           
-          // Validate the data structure before setting state
-          if (isValidHeroContent(heroContentData)) {
+          if (isValidMultilingualContent(heroContentData)) {
+            // We have valid multilingual content
             setContent(heroContentData);
+          } else if (isValidHeroContent(heroContentData)) {
+            // We have legacy single-language content - convert to multilingual format
+            setContent({
+              en: heroContentData as HeroContent,
+              he: defaultContent.he // Use default for Hebrew
+            });
           } else {
+            // Handle invalid content structure by keeping defaults
             console.error('Hero content has invalid structure:', heroContentData);
           }
         }
@@ -130,6 +165,9 @@ const HeroSection = () => {
     };
   }, []);
 
+  // Get the appropriate content based on the current language
+  const currentContent = content[language] || content.en;
+
   return (
     <section id="home" className="relative min-h-screen flex flex-col items-center justify-center pt-16 overflow-hidden">
       {/* Admin Edit Button */}
@@ -153,7 +191,7 @@ const HeroSection = () => {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full h-full flex items-center justify-center">
           <img 
-            src={content.logo_url} 
+            src={currentContent.logo_url} 
             alt="Moonlight Logo" 
             className="w-full h-full object-cover opacity-20"
           />
@@ -182,25 +220,25 @@ const HeroSection = () => {
         ) : (
           <>
             <img 
-              src={content.logo_url} 
+              src={currentContent.logo_url} 
               alt="Moonlight Logo" 
               className="w-72 h-72 md:w-80 md:h-80 mx-auto mb-8 animate-pulse-glow"
             />
             <h1 className="text-4xl md:text-6xl font-bold mb-4 text-glow">
-              <span className="text-white">{content.title}</span>
+              <span className="text-white">{currentContent.title}</span>
             </h1>
             <h2 className="text-xl md:text-3xl font-light mb-8 text-band-purple">
-              {content.subtitle}
+              {currentContent.subtitle}
             </h2>
             <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-12">
-              {content.description}
+              {currentContent.description}
             </p>
             <div className="flex flex-col md:flex-row gap-4 justify-center">
               <Button size="lg" className="bg-band-purple hover:bg-band-purple/80 text-white glow-purple" asChild>
-                <a href={content.button1_link}>{content.button1_text}</a>
+                <a href={currentContent.button1_link}>{currentContent.button1_text}</a>
               </Button>
               <Button size="lg" variant="outline" className="border-band-pink text-band-pink hover:bg-band-pink/10 glow-pink" asChild>
-                <a href={content.button2_link}>{content.button2_text}</a>
+                <a href={currentContent.button2_link}>{currentContent.button2_text}</a>
               </Button>
             </div>
           </>
