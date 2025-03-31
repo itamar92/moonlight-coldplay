@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Json } from '@/integrations/supabase/types';
 
 interface HeroContent {
   title: string;
@@ -181,11 +182,12 @@ const HeroEditor = () => {
         }
       };
       
+      // Convert the strongly typed object to a JSON object that Supabase can handle
       const { error } = await supabase
         .from('content')
         .upsert({
           section: 'hero',
-          content: updatedContent,
+          content: updatedContent as Json,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'section'

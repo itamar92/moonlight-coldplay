@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
@@ -5,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from 'react-router-dom';
 import { Edit } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { Json } from '@/integrations/supabase/types';
 
 interface HeroContent {
   title: string;
@@ -100,7 +102,7 @@ const HeroSection = () => {
           
           if (isValidMultilingualContent(heroContentData)) {
             // We have valid multilingual content
-            setContent(heroContentData);
+            setContent(heroContentData as MultilingualHeroContent);
           } else if (isValidHeroContent(heroContentData)) {
             // We have legacy single-language content - convert to multilingual format
             setContent({
