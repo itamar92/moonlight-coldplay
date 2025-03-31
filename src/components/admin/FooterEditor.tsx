@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 interface FooterData {
   companyName: string;
@@ -68,7 +69,23 @@ const FooterEditor = () => {
         }
 
         if (data?.content) {
-          form.reset(data.content as FooterData);
+          // Properly type cast the JSON data to FooterData
+          const parsedData = data.content as Record<string, any>;
+          const footerData: FooterData = {
+            companyName: parsedData.companyName || form.getValues().companyName,
+            description: parsedData.description || form.getValues().description,
+            email: parsedData.email || form.getValues().email,
+            phone: parsedData.phone || form.getValues().phone,
+            location: parsedData.location || form.getValues().location,
+            socialLinks: {
+              facebook: parsedData.socialLinks?.facebook || form.getValues().socialLinks.facebook,
+              instagram: parsedData.socialLinks?.instagram || form.getValues().socialLinks.instagram,
+              twitter: parsedData.socialLinks?.twitter || form.getValues().socialLinks.twitter,
+              youtube: parsedData.socialLinks?.youtube || form.getValues().socialLinks.youtube
+            }
+          };
+          
+          form.reset(footerData);
         }
       } catch (error) {
         console.error('Error fetching footer data:', error);
@@ -89,12 +106,27 @@ const FooterEditor = () => {
     try {
       setIsLoading(true);
       
+      // Convert FooterData to a proper JSON object for Supabase
+      const footerContent: Json = {
+        companyName: data.companyName,
+        description: data.description,
+        email: data.email,
+        phone: data.phone,
+        location: data.location,
+        socialLinks: {
+          facebook: data.socialLinks.facebook,
+          instagram: data.socialLinks.instagram,
+          twitter: data.socialLinks.twitter,
+          youtube: data.socialLinks.youtube
+        }
+      };
+      
       const { error: upsertError } = await supabase
         .from('content')
         .upsert(
           { 
             section: 'footer',
-            content: data,
+            content: footerContent,
             updated_at: new Date().toISOString()
           },
           { onConflict: 'section' }

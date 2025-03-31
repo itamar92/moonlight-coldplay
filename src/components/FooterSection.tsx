@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 interface FooterData {
   companyName: string;
@@ -57,7 +58,21 @@ const FooterSection = () => {
         }
 
         if (data?.content) {
-          setFooterData(data.content as FooterData);
+          // Properly type cast the JSON data to FooterData
+          const parsedData = data.content as Record<string, any>;
+          setFooterData({
+            companyName: parsedData.companyName || defaultFooterData.companyName,
+            description: parsedData.description || defaultFooterData.description,
+            email: parsedData.email || defaultFooterData.email,
+            phone: parsedData.phone || defaultFooterData.phone,
+            location: parsedData.location || defaultFooterData.location,
+            socialLinks: {
+              facebook: parsedData.socialLinks?.facebook || defaultFooterData.socialLinks.facebook,
+              instagram: parsedData.socialLinks?.instagram || defaultFooterData.socialLinks.instagram,
+              twitter: parsedData.socialLinks?.twitter || defaultFooterData.socialLinks.twitter,
+              youtube: parsedData.socialLinks?.youtube || defaultFooterData.socialLinks.youtube
+            }
+          });
         }
       } catch (error) {
         console.error('Error fetching footer data:', error);
