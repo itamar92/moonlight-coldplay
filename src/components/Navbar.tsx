@@ -1,230 +1,109 @@
 
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { supabase } from '@/integrations/supabase/client';
-import { UserRoundIcon, MenuIcon, LogOut, Settings } from 'lucide-react';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useToast } from '@/hooks/use-toast';
-import LanguageSwitcher from './LanguageSwitcher';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { Link } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useMobile } from "@/hooks/use-mobile";
 
 const Navbar = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [session, setSession] = useState<any>(null);
-  const { toast } = useToast();
   const { language } = useLanguage();
-  
-  // Check authentication and admin status
+  const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useMobile();
+  const [isScrolled, setIsScrolled] = useState(false);
+
   useEffect(() => {
-    const checkSession = async () => {
-      // Get current session
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-
-      if (data.session) {
-        // Check if user is admin
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        setIsAdmin(!!profileData?.is_admin);
-        console.log("Admin status:", !!profileData?.is_admin, profileData);
-      }
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
     };
-
-    checkSession();
-
-    // Listen for authentication changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      setSession(currentSession);
-      
-      if (currentSession) {
-        // Check if user is admin when auth state changes
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-          
-        setIsAdmin(!!profileData?.is_admin);
-        console.log("Auth change - admin status:", !!profileData?.is_admin, profileData);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error signing out",
-        description: error.message,
-      });
-    } else {
-      toast({
-        title: "Signed out successfully",
-        description: "You have been logged out.",
-      });
-    }
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
   };
 
-  // Translated menu items
-  const menuItems = {
-    home: language === 'en' ? 'HOME' : 'דף הבית',
-    shows: language === 'en' ? 'SHOWS' : 'הופעות',
-    media: language === 'en' ? 'MEDIA' : 'מדיה',
-    testimonials: language === 'en' ? 'TESTIMONIALS' : 'המלצות',
-    contact: language === 'en' ? 'CONTACT' : 'צור קשר',
-    admin: language === 'en' ? 'ADMIN' : 'ניהול',
-    account: language === 'en' ? 'ACCOUNT' : 'חשבון',
-    login: language === 'en' ? 'LOGIN' : 'התחברות',
-    logout: language === 'en' ? 'Logout' : 'התנתקות',
-    contentEditor: language === 'en' ? 'Content Editor' : 'עורך תוכן'
+  useEffect(() => {
+    // Close mobile menu when switching to desktop
+    if (!isMobile && isOpen) {
+      setIsOpen(false);
+    }
+  }, [isMobile, isOpen]);
+
+  const getNavItemSpacing = () => {
+    // Add more spacing between Hebrew nav items
+    return language === 'he' ? 'mx-4' : 'mx-3';
   };
+
+  const navItems = [
+    {
+      path: '/',
+      nameEn: 'Home',
+      nameHe: 'דף הבית'
+    },
+    {
+      path: '/shows',
+      nameEn: 'Shows',
+      nameHe: 'הופעות'
+    }
+  ];
 
   return (
-    <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
-          <img 
-            src="/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png" 
-            alt="Moonlight Logo" 
-            className="h-10 w-10"
-          />
-          <span className="font-bold text-2xl text-white text-glow">MOONLIGHT</span>
-        </Link>
-        
-        <div className={`hidden md:flex ${language === 'he' ? 'space-x-0 rtl:space-x-reverse space-x-8' : 'space-x-8'} text-sm font-medium`}>
-          <a href="#home" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.home}</a>
-          <a href="#shows" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.shows}</a>
-          <a href="#media" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.media}</a>
-          <a href="#testimonials" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.testimonials}</a>
-          <a href="#contact" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.contact}</a>
-          {isAdmin && (
-            <Link to="/admin" className="text-white hover:text-band-purple transition-colors px-3 flex items-center">
-              <span>{menuItems.admin}</span>
-              {/* Admin badge */}
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
-            </Link>
-          )}
-          <LanguageSwitcher />
-          {session ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-transparent flex items-center p-0">
-                  <UserRoundIcon className="h-4 w-4 mr-1" />
-                  {menuItems.account}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-band-dark border-band-purple/30 text-white">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span>{language === 'en' ? 'My Account' : 'החשבון שלי'}</span>
-                    <span className="text-xs text-white/60">{session.user.email}</span>
-                    {isAdmin && (
-                      <span className="mt-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full w-fit text-band-purple">
-                        {language === 'en' ? 'Admin' : 'מנהל'}
-                      </span>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/10" />
-                {isAdmin && (
-                  <DropdownMenuItem
-                    className="text-white hover:text-white hover:bg-white/10 cursor-pointer"
-                    asChild
+    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-black/80 backdrop-blur-sm py-3' : 'bg-transparent py-5'}`}>
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center">
+          <Link to="/" className="text-white text-xl font-bold">MOONLIGHT</Link>
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center">
+            <ul className="flex mr-6">
+              {navItems.map((item) => (
+                <li key={item.path} className={getNavItemSpacing()}>
+                  <Link 
+                    to={item.path} 
+                    className="text-white hover:text-band-purple transition-colors"
                   >
-                    <Link to="/editor" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>{menuItems.contentEditor}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem 
-                  className="text-white hover:text-white hover:bg-white/10 cursor-pointer"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>{menuItems.logout}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/auth" className="text-white/70 hover:text-white">{menuItems.login}</Link>
-          )}
+                    {language === 'en' ? item.nameEn : item.nameHe}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <LanguageSwitcher />
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <LanguageSwitcher />
+            <button
+              onClick={toggleMenu}
+              className="ml-4 text-white focus:outline-none"
+              aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
-        
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden text-white">
-              <MenuIcon className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="bg-band-dark border-band-purple/20 text-white">
-            <div className="flex flex-col space-y-4 mt-8">
-              <a href="#home" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.home}</a>
-              <a href="#shows" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.shows}</a>
-              <a href="#media" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.media}</a>
-              <a href="#testimonials" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.testimonials}</a>
-              <a href="#contact" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.contact}</a>
-              {isAdmin && (
-                <Link to="/admin" className="text-band-purple hover:text-band-purple/80 transition-colors text-lg flex items-center">
-                  <span>{menuItems.admin}</span>
-                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
-                </Link>
-              )}
-              <div className="py-2">
-                <LanguageSwitcher />
-              </div>
-              
-              {session ? (
-                <>
-                  <div className="py-2 text-white/70">
-                    <p className="text-sm">{session.user.email}</p>
-                    {isAdmin && (
-                      <span className="mt-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full inline-block text-band-purple">
-                        {language === 'en' ? 'Admin' : 'מנהל'}
-                      </span>
-                    )}
-                  </div>
-                  {isAdmin && (
-                    <Link to="/editor" className="text-white/70 hover:text-white flex items-center text-lg">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>{menuItems.contentEditor}</span>
-                    </Link>
-                  )}
-                  <button 
-                    onClick={handleLogout}
-                    className="text-white/70 hover:text-white flex items-center text-lg"
+
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden mt-4 py-4 bg-black/90 backdrop-blur-sm rounded-lg">
+            <ul className="flex flex-col items-center space-y-4">
+              {navItems.map((item) => (
+                <li key={item.path}>
+                  <Link 
+                    to={item.path} 
+                    className="text-white hover:text-band-purple transition-colors text-lg"
+                    onClick={() => setIsOpen(false)}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{menuItems.logout}</span>
-                  </button>
-                </>
-              ) : (
-                <Link to="/auth" className="text-white/70 hover:text-white text-lg">{menuItems.login}</Link>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+                    {language === 'en' ? item.nameEn : item.nameHe}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </nav>
   );

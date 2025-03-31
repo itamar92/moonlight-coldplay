@@ -18,6 +18,8 @@ const Index = () => {
   useEffect(() => {
     const createAdminUser = async () => {
       try {
+        console.log("Checking if admin user exists...");
+        
         // Check if the admin user already exists by trying to sign in
         const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
           email: 'itamar92@gmail.com',
@@ -43,7 +45,7 @@ const Index = () => {
         
         // If sign-in failed because the user doesn't exist, create the user
         if (signInError) {
-          console.log('Creating admin user...');
+          console.log('Admin user not found, creating new admin user...');
           // Try to create the admin user
           const { data: newUser, error: signupError } = await supabase.auth.signUp({
             email: 'itamar92@gmail.com',
@@ -57,24 +59,43 @@ const Index = () => {
           
           // If user was created successfully, set them as admin in profiles table
           if (newUser?.user) {
-            console.log('Admin user created:', newUser.user.id);
-            // Wait a moment for the user to be fully created
-            setTimeout(async () => {
+            console.log('Admin user created, ID:', newUser.user.id);
+            
+            // Check if profile exists
+            const { data: existingProfile } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', newUser.user.id)
+              .single();
+              
+            if (existingProfile) {
+              console.log('Profile exists, updating admin status');
               const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ is_admin: true })
                 .eq('id', newUser.user.id);
-              
+                
               if (updateError) {
-                console.error('Error updating user profile:', updateError);
-              } else {
-                console.log('Admin user created successfully');
+                console.error('Error updating profile:', updateError);
               }
-            }, 1000);
+            } else {
+              console.log('Profile does not exist, inserting new profile');
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({ 
+                  id: newUser.user.id,
+                  email: newUser.user.email,
+                  is_admin: true 
+                });
+                
+              if (insertError) {
+                console.error('Error creating profile:', insertError);
+              }
+            }
           }
         }
       } catch (error) {
-        console.error('Error in admin user creation:', error);
+        console.error('Error in admin user creation process:', error);
       }
     };
     

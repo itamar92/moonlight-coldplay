@@ -34,6 +34,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Starting Google Sheets fetch operation");
+    
     // Get Google Sheets API key and sheet ID from environment variables
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
     const SHEET_ID = Deno.env.get("GOOGLE_SHEET_ID");
@@ -42,6 +44,7 @@ serve(async (req) => {
     console.log("Sheet ID exists:", !!SHEET_ID);
     
     if (!GOOGLE_API_KEY || !SHEET_ID) {
+      console.error("Missing required environment variables");
       throw new Error("Missing required environment variables");
     }
 
@@ -74,21 +77,23 @@ serve(async (req) => {
     
     if (!data.values || data.values.length === 0) {
       console.log("No data rows found in sheet");
-      return new Response(JSON.stringify({ shows: [] }), {
+      return new Response(JSON.stringify({ shows: [], message: "No data found" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
+
+    console.log("Processing rows...");
     
     // Transform Google Sheets data to match our shows format
     // No longer filtering out past events, only filtering private events
     const shows = data.values
       .filter(row => {
         // Log each row for debugging
-        console.log("Processing row:", JSON.stringify(row));
+        console.log("Row data:", JSON.stringify(row));
         
-        if (!row[0] || !row[1] || !row[3] || !row[4]) {
-          console.log("Skipping row due to missing essential data");
+        if (!row[0] || !row[1] || !row[3]) {
+          console.log("Skipping row due to missing essential data (date, venue, or location)");
           return false; // Skip rows with missing essential data
         }
         
@@ -110,13 +115,17 @@ serve(async (req) => {
     console.log(`Filtered to ${shows.length} valid shows`);
     console.log("Final shows data:", JSON.stringify(shows));
     
-    return new Response(JSON.stringify({ shows }), {
+    return new Response(JSON.stringify({ shows, success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     console.error("Error fetching Google Sheets data:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message, 
+      success: false,
+      shows: []
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

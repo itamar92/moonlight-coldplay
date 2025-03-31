@@ -84,6 +84,7 @@ const TestimonialsSection = () => {
   useEffect(() => {
     const fetchTestimonialsContent = async () => {
       try {
+        console.log('Fetching testimonials content...');
         const { data, error } = await supabase
           .from('content')
           .select('content')
@@ -91,15 +92,28 @@ const TestimonialsSection = () => {
           .single();
           
         if (error) {
-          console.error('Error fetching testimonials content:', error);
+          if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+            console.error('Error fetching testimonials content:', error);
+          } else {
+            console.log('No testimonials content found in database, using defaults');
+          }
           return;
         }
         
         if (data?.content) {
-          setContent(JSON.parse(JSON.stringify(data.content)));
+          try {
+            const parsedContent = typeof data.content === 'string' 
+              ? JSON.parse(data.content) 
+              : data.content;
+              
+            console.log('Testimonials content fetched successfully');
+            setContent(parsedContent);
+          } catch (parseError) {
+            console.error('Error parsing testimonials content:', parseError);
+          }
         }
       } catch (error) {
-        console.error('Error parsing testimonials content:', error);
+        console.error('Exception in testimonials content fetch:', error);
       }
     };
     
