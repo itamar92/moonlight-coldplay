@@ -8,9 +8,11 @@ import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/context/LanguageContext';
 
 const Index = () => {
   const { toast } = useToast();
+  const { language } = useLanguage();
 
   // Only run once when the app initializes to ensure admin user exists
   useEffect(() => {
@@ -80,7 +82,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-band-dark text-white">
+    <div className={`min-h-screen bg-band-dark text-white ${language === 'he' ? 'rtl' : 'ltr'}`}>
       <Navbar />
       <HeroSection />
       <ShowsSection />

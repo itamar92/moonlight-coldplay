@@ -112,14 +112,14 @@ const Navbar = () => {
           <span className="font-bold text-2xl text-white text-glow">MOONLIGHT</span>
         </Link>
         
-        <div className="hidden md:flex space-x-8 text-sm font-medium">
-          <a href="#home" className="text-white hover:text-band-purple transition-colors">{menuItems.home}</a>
-          <a href="#shows" className="text-white hover:text-band-purple transition-colors">{menuItems.shows}</a>
-          <a href="#media" className="text-white hover:text-band-purple transition-colors">{menuItems.media}</a>
-          <a href="#testimonials" className="text-white hover:text-band-purple transition-colors">{menuItems.testimonials}</a>
-          <a href="#contact" className="text-white hover:text-band-purple transition-colors">{menuItems.contact}</a>
+        <div className={`hidden md:flex ${language === 'he' ? 'space-x-0 rtl:space-x-reverse space-x-8' : 'space-x-8'} text-sm font-medium`}>
+          <a href="#home" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.home}</a>
+          <a href="#shows" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.shows}</a>
+          <a href="#media" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.media}</a>
+          <a href="#testimonials" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.testimonials}</a>
+          <a href="#contact" className="text-white hover:text-band-purple transition-colors px-3">{menuItems.contact}</a>
           {isAdmin && (
-            <Link to="/admin" className="text-band-purple hover:text-band-purple/80 transition-colors flex items-center">
+            <Link to="/admin" className="text-white hover:text-band-purple transition-colors px-3 flex items-center">
               <span>{menuItems.admin}</span>
               {/* Admin badge */}
               <span className="ml-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
