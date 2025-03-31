@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ShowsSection from '../components/ShowsSection';
@@ -11,13 +11,24 @@ import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasConnectionError, setHasConnectionError] = useState(false);
 
   // Only run once when the app initializes to check if admin user exists
   useEffect(() => {
     const checkForAdminUser = async () => {
       try {
+        setIsLoading(true);
+        
         // Check if session exists - fixed method call
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking session:', error);
+          setHasConnectionError(true);
+          return;
+        }
+        
         const session = data.session;
         
         if (session) {
@@ -46,16 +57,22 @@ const Index = () => {
         console.log('No admin found in profiles, but not creating one automatically');
       } catch (error) {
         console.error('Error in admin user check:', error);
+        setHasConnectionError(true);
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    checkForAdminUser().catch(error => {
-      console.error('Unhandled error in admin user check:', error);
-    });
+    checkForAdminUser();
   }, []);
 
   return (
     <div className="min-h-screen bg-band-dark text-white">
+      {hasConnectionError && (
+        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
+          Connection to database failed. Some features may not work properly.
+        </div>
+      )}
       <Navbar />
       <HeroSection />
       <ShowsSection />

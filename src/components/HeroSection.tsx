@@ -82,18 +82,32 @@ const HeroSection = () => {
   const [session, setSession] = useState<any>(null);
   const { language } = useLanguage();
   const { toast } = useToast();
-
+  const [connectionError, setConnectionError] = useState(false);
+  
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setLoading(true);
         console.log('Fetching hero content...');
         
-        const { data, error } = await supabase
+        // Add a timeout to prevent getting stuck loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database request timeout')), 10000)
+        );
+        
+        const fetchPromise = supabase
           .from('content')
           .select('*')
           .eq('section', 'hero')
           .single();
+        
+        // Race between fetch and timeout
+        const { data, error } = await Promise.race([
+          fetchPromise,
+          timeoutPromise.then(() => {
+            throw new Error('Database request timed out');
+          })
+        ]);
         
         if (error) {
           console.error('Error fetching hero content:', error);
@@ -104,11 +118,19 @@ const HeroSection = () => {
               title: 'Error loading content',
               description: 'There was a problem loading the hero content.'
             });
+            
+            // Set connection error if this is a network-related error
+            if (error.message && (
+                error.message.includes('fetch') || 
+                error.message.includes('network') ||
+                error.message.includes('timeout')
+            )) {
+              setConnectionError(true);
+            }
           } else {
             console.log('Hero content not found in database, using defaults');
           }
           
-          // Even if there's an error, we should still end the loading state
           setLoading(false);
           return;
         }
@@ -150,13 +172,22 @@ const HeroSection = () => {
         }
       } catch (error) {
         console.error('Error in hero content fetch:', error);
+        
+        // Show connection error message for network-related issues
+        if (error instanceof Error && (
+            error.message.includes('fetch') || 
+            error.message.includes('network') ||
+            error.message.includes('timeout')
+        )) {
+          setConnectionError(true);
+        }
+        
         toast({
           variant: 'destructive',
           title: 'Error loading content',
           description: 'There was a problem loading the hero content.'
         });
       } finally {
-        // Make sure to set loading to false regardless of success or failure
         setLoading(false);
       }
     };
@@ -167,9 +198,14 @@ const HeroSection = () => {
     const checkAuth = async () => {
       try {
         // Get current session - fixed method call
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
+        const { data, error } = await supabase.auth.getSession();
         
+        if (error) {
+          console.error('Error getting session:', error);
+          return;
+        }
+        
+        const session = data.session;
         setSession(session);
         
         if (session) {
@@ -222,6 +258,13 @@ const HeroSection = () => {
 
   return (
     <section id="home" className="relative min-h-screen flex flex-col items-center justify-center pt-16 overflow-hidden">
+      {/* Connection Error Message */}
+      {connectionError && (
+        <div className="absolute top-16 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
+          Connection to database failed. Default content is being displayed.
+        </div>
+      )}
+      
       {/* Admin Edit Button */}
       {isAdmin && (
         <div className="absolute top-20 right-4 z-20">
