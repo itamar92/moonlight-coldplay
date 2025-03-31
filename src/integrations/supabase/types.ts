@@ -9,6 +9,69 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      content: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          section: string
+          updated_at: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          section: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          section?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      media: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration: string | null
+          id: string
+          order: number
+          thumbnail: string | null
+          title: string
+          type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          order: number
+          thumbnail?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          order?: number
+          thumbnail?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -63,6 +126,39 @@ export type Database = {
           ticket_link?: string
           updated_at?: string | null
           venue?: string
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          author: string
+          avatar_url: string | null
+          content: string
+          created_at: string
+          id: string
+          order: number
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          author: string
+          avatar_url?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          order: number
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          avatar_url?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          order?: number
+          role?: string
+          updated_at?: string
         }
         Relationships: []
       }
