@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface HeroContent {
   id?: string;
@@ -18,7 +20,7 @@ interface HeroContent {
   logo_url: string;
 }
 
-const defaultContent = {
+const defaultContent: HeroContent = {
   title: 'MOONLIGHT',
   subtitle: 'COLDPLAY TRIBUTE BAND',
   description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision. Join us on a musical journey through the stars.',
@@ -31,7 +33,7 @@ const defaultContent = {
 
 const HeroEditor = () => {
   const [content, setContent] = useState<HeroContent>(defaultContent);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -47,11 +49,25 @@ const HeroEditor = () => {
           .single();
         
         if (error && error.code !== 'PGRST116') {
-          throw error;
+          console.error('Error fetching hero content:', error);
+          return;
         }
         
-        if (data) {
-          setContent(data.content as HeroContent);
+        if (data && data.content) {
+          // Safely handle the content data with proper type checking
+          const heroContent = data.content;
+          
+          // Verify the data has the expected structure before setting state
+          if (
+            typeof heroContent === 'object' && 
+            heroContent !== null && 
+            !Array.isArray(heroContent) &&
+            'title' in heroContent
+          ) {
+            setContent(heroContent as HeroContent);
+          } else {
+            console.error('Hero content has invalid structure:', heroContent);
+          }
         }
       } catch (error) {
         console.error('Error fetching hero content:', error);
@@ -133,6 +149,30 @@ const HeroEditor = () => {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <Skeleton className="h-32" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <Skeleton className="h-20" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
