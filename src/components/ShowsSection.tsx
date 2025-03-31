@@ -49,14 +49,13 @@ const ShowsSection = () => {
           .from('shows')
           .select('*')
           .eq('is_published', true)
-          .order('date', { ascending: true })
-          .limit(4);
+          .order('date', { ascending: true });
 
         if (supabaseError) throw supabaseError;
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          setShows(supabaseData);
+          setShows(supabaseData.slice(0, 4)); // Only show the first 4 shows in the homepage section
           setLoading(false);
           return;
         }
@@ -69,7 +68,7 @@ const ShowsSection = () => {
         if (functionError) throw functionError;
         
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-          setShows(googleSheetsData.shows);
+          setShows(googleSheetsData.shows.slice(0, 4)); // Only show the first 4 shows in the homepage section
         } else {
           // No shows found in either Supabase or Google Sheets
           setShows([]);

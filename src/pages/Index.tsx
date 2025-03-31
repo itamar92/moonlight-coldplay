@@ -13,16 +13,33 @@ const Index = () => {
   useEffect(() => {
     const createAdminUser = async () => {
       try {
-        // Check if the admin user already exists
-        const { data: existingUser } = await supabase.auth.signInWithPassword({
+        // Check if the admin user already exists by trying to sign in
+        const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
           email: 'itamar92@gmail.com',
           password: 'admin',
         });
         
-        // If user doesn't exist, create them
-        if (!existingUser?.user) {
-          // Sign up the admin user
-          const { error: signupError, data } = await supabase.auth.signUp({
+        // If user exists and sign-in was successful, we're done
+        if (existingUser?.user) {
+          console.log('Admin user already exists and credentials are valid');
+          
+          // Ensure the user has admin privileges
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ is_admin: true })
+            .eq('id', existingUser.user.id);
+          
+          if (updateError) {
+            console.error('Error updating admin privileges:', updateError);
+          }
+          
+          return;
+        }
+        
+        // If sign-in failed because the user doesn't exist, create the user
+        if (signInError) {
+          // Try to create the admin user
+          const { data: newUser, error: signupError } = await supabase.auth.signUp({
             email: 'itamar92@gmail.com',
             password: 'admin',
           });
@@ -33,13 +50,13 @@ const Index = () => {
           }
           
           // If user was created successfully, set them as admin in profiles table
-          if (data?.user) {
+          if (newUser?.user) {
             // Wait a moment for the user to be fully created
             setTimeout(async () => {
               const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ is_admin: true })
-                .eq('id', data.user.id);
+                .eq('id', newUser.user.id);
               
               if (updateError) {
                 console.error('Error updating user profile:', updateError);
