@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Json } from '@/integrations/supabase/types';
 
 interface HeroContent {
   id?: string;
@@ -29,6 +30,23 @@ const defaultContent: HeroContent = {
   button2_text: 'FOLLOW US',
   button2_link: '#',
   logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+};
+
+// Helper function to validate if an object is a valid HeroContent
+const isValidHeroContent = (obj: any): obj is HeroContent => {
+  return (
+    typeof obj === 'object' && 
+    obj !== null && 
+    !Array.isArray(obj) &&
+    typeof obj.title === 'string' &&
+    typeof obj.subtitle === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.button1_text === 'string' &&
+    typeof obj.button1_link === 'string' &&
+    typeof obj.button2_text === 'string' &&
+    typeof obj.button2_link === 'string' &&
+    typeof obj.logo_url === 'string'
+  );
 };
 
 const HeroEditor = () => {
@@ -55,18 +73,13 @@ const HeroEditor = () => {
         
         if (data && data.content) {
           // Safely handle the content data with proper type checking
-          const heroContent = data.content;
+          const heroContentData = data.content;
           
-          // Verify the data has the expected structure before setting state
-          if (
-            typeof heroContent === 'object' && 
-            heroContent !== null && 
-            !Array.isArray(heroContent) &&
-            'title' in heroContent
-          ) {
-            setContent(heroContent as HeroContent);
+          // Validate the data structure before setting state
+          if (isValidHeroContent(heroContentData)) {
+            setContent(heroContentData);
           } else {
-            console.error('Hero content has invalid structure:', heroContent);
+            console.error('Hero content has invalid structure:', heroContentData);
           }
         }
       } catch (error) {
