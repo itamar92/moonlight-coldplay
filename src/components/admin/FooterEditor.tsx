@@ -2,19 +2,25 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+
+interface FooterTranslations {
+  companyName: string;
+  description: string;
+}
 
 interface FooterData {
   companyName: string;
@@ -28,27 +34,43 @@ interface FooterData {
     twitter: string;
     youtube: string;
   };
+  translations: {
+    en: FooterTranslations;
+    he: FooterTranslations;
+  };
 }
+
+const defaultFooterData: FooterData = {
+  companyName: 'MOONLIGHT',
+  description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.',
+  email: 'booking@moonlighttribute.com',
+  phone: '+1 (555) 123-4567',
+  location: 'Los Angeles, CA',
+  socialLinks: {
+    facebook: '#',
+    instagram: '#',
+    twitter: '#',
+    youtube: '#'
+  },
+  translations: {
+    en: {
+      companyName: 'MOONLIGHT',
+      description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.'
+    },
+    he: {
+      companyName: 'מונלייט',
+      description: 'חווה את הקסם של המוסיקה האיקונית של קולדפליי שמבוצעת בצורה חיה עם תשוקה ודיוק.'
+    }
+  }
+};
 
 const FooterEditor = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  
   const form = useForm<FooterData>({
-    defaultValues: {
-      companyName: 'MOONLIGHT',
-      description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.',
-      email: 'booking@moonlighttribute.com',
-      phone: '+1 (555) 123-4567',
-      location: 'Los Angeles, CA',
-      socialLinks: {
-        facebook: '#',
-        instagram: '#',
-        twitter: '#',
-        youtube: '#'
-      }
-    }
+    defaultValues: defaultFooterData
   });
+  const [languageTab, setLanguageTab] = useState<'en' | 'he'>('en');
 
   useEffect(() => {
     const fetchFooterData = async () => {
@@ -61,10 +83,14 @@ const FooterEditor = () => {
           .single();
 
         if (error) {
-          if (error.code !== 'PGRST116') { // "Not found" error
-            throw error;
+          if (error.code !== 'PGRST116') { // Not found error
+            console.error('Error fetching footer data:', error);
+            toast({
+              variant: "destructive",
+              title: "Error fetching footer data",
+              description: error.message,
+            });
           }
-          // If not found, we'll use the default values
           return;
         }
 
@@ -82,7 +108,8 @@ const FooterEditor = () => {
               instagram: parsedData.socialLinks?.instagram || form.getValues().socialLinks.instagram,
               twitter: parsedData.socialLinks?.twitter || form.getValues().socialLinks.twitter,
               youtube: parsedData.socialLinks?.youtube || form.getValues().socialLinks.youtube
-            }
+            },
+            translations: parsedData.translations || defaultFooterData.translations
           };
           
           form.reset(footerData);
@@ -90,17 +117,17 @@ const FooterEditor = () => {
       } catch (error) {
         console.error('Error fetching footer data:', error);
         toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to load footer data',
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch footer data. Please try again.",
         });
       } finally {
         setIsLoading(false);
       }
     };
-
+    
     fetchFooterData();
-  }, [form, toast]);
+  }, [toast]);
 
   const onSubmit = async (data: FooterData) => {
     try {
@@ -118,6 +145,16 @@ const FooterEditor = () => {
           instagram: data.socialLinks.instagram,
           twitter: data.socialLinks.twitter,
           youtube: data.socialLinks.youtube
+        },
+        translations: {
+          en: {
+            companyName: data.translations.en.companyName,
+            description: data.translations.en.description
+          },
+          he: {
+            companyName: data.translations.he.companyName,
+            description: data.translations.he.description
+          }
         }
       };
       
@@ -131,58 +168,62 @@ const FooterEditor = () => {
           },
           { onConflict: 'section' }
         );
-
+      
       if (upsertError) throw upsertError;
-
+      
       toast({
-        title: 'Success',
-        description: 'Footer content has been updated',
+        title: "Success!",
+        description: "Footer content has been updated.",
       });
-    } catch (error) {
-      console.error('Error saving footer data:', error);
+    } catch (error: any) {
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to save footer data',
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update footer content.",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return (
-    <div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Basic Information</h3>
-              
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto">
+        <Tabs 
+          defaultValue="general"
+          className="w-full mt-4"
+        >
+          <TabsList className="grid grid-cols-3 mb-6">
+            <TabsTrigger value="general">General Info</TabsTrigger>
+            <TabsTrigger value="contact">Contact Info</TabsTrigger>
+            <TabsTrigger value="translations">Translations</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="general" className="p-4 bg-black/30 rounded-md border border-white/10">
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Company Name</FormLabel>
+                    <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Company Name" {...field} />
+                      <Input {...field} className="bg-white/10 text-white border-white/20" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={form.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Description</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Enter a brief description about your band"
-                        className="min-h-[100px]"
                         {...field} 
+                        className="bg-white/10 text-white border-white/20 min-h-[100px]"
                       />
                     </FormControl>
                     <FormMessage />
@@ -190,126 +231,203 @@ const FooterEditor = () => {
                 )}
               />
             </div>
-            
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Contact Information</h3>
-              
+          </TabsContent>
+          
+          <TabsContent value="contact" className="p-4 bg-black/30 rounded-md border border-white/10">
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Email</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="your@email.com" {...field} />
+                      <Input {...field} className="bg-white/10 text-white border-white/20" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Phone</FormLabel>
+                    <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 (123) 456-7890" {...field} />
+                      <Input {...field} className="bg-white/10 text-white border-white/20" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={form.control}
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Location</FormLabel>
+                    <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="City, Country" {...field} />
+                      <Input {...field} className="bg-white/10 text-white border-white/20" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="pt-2 border-t border-white/10">
+                <h3 className="text-white text-sm font-medium mb-4">Social Media Links</h3>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="socialLinks.facebook"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Facebook URL</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white/10 text-white border-white/20" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="socialLinks.instagram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Instagram URL</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white/10 text-white border-white/20" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="socialLinks.twitter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Twitter URL</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white/10 text-white border-white/20" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="socialLinks.youtube"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>YouTube URL</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white/10 text-white border-white/20" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </TabsContent>
           
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Social Media Links</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="socialLinks.facebook"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Facebook</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://facebook.com/your-page" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <TabsContent value="translations" className="p-4 bg-black/30 rounded-md border border-white/10">
+            <Tabs 
+              value={languageTab} 
+              onValueChange={(value) => setLanguageTab(value as 'en' | 'he')}
+              className="w-full"
+            >
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="en">English</TabsTrigger>
+                <TabsTrigger value="he">Hebrew</TabsTrigger>
+              </TabsList>
               
-              <FormField
-                control={form.control}
-                name="socialLinks.instagram"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Instagram</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://instagram.com/your-handle" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <TabsContent value="en" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="translations.en.companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Name (English)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white/10 text-white border-white/20" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="translations.en.description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (English)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          className="bg-white/10 text-white border-white/20 min-h-[100px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
               
-              <FormField
-                control={form.control}
-                name="socialLinks.twitter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Twitter</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://twitter.com/your-handle" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="socialLinks.youtube"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">YouTube</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://youtube.com/channel/your-channel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-          
+              <TabsContent value="he" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="translations.he.companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Name (Hebrew)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          dir="rtl"
+                          className="bg-white/10 text-white border-white/20" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="translations.he.description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Hebrew)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          dir="rtl"
+                          className="bg-white/10 text-white border-white/20 min-h-[100px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        </Tabs>
+        
+        <div className="flex justify-end">
           <Button 
             type="submit" 
-            className="bg-band-purple hover:bg-band-purple/80 w-full"
             disabled={isLoading}
+            className="bg-band-purple hover:bg-band-purple/80 text-white"
           >
-            {isLoading ? 'Saving...' : 'Save Footer Content'}
+            {isLoading ? "Saving..." : "Save Changes"}
           </Button>
-        </form>
-      </Form>
-    </div>
+        </div>
+      </form>
+    </Form>
   );
 };
 

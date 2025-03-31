@@ -14,11 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '@/context/LanguageContext';
 
 const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [session, setSession] = useState<any>(null);
   const { toast } = useToast();
+  const { language } = useLanguage();
   
   // Check authentication and admin status
   useEffect(() => {
@@ -83,6 +86,20 @@ const Navbar = () => {
     }
   };
 
+  // Translated menu items
+  const menuItems = {
+    home: language === 'en' ? 'HOME' : 'דף הבית',
+    shows: language === 'en' ? 'SHOWS' : 'הופעות',
+    media: language === 'en' ? 'MEDIA' : 'מדיה',
+    testimonials: language === 'en' ? 'TESTIMONIALS' : 'המלצות',
+    contact: language === 'en' ? 'CONTACT' : 'צור קשר',
+    admin: language === 'en' ? 'ADMIN' : 'ניהול',
+    account: language === 'en' ? 'ACCOUNT' : 'חשבון',
+    login: language === 'en' ? 'LOGIN' : 'התחברות',
+    logout: language === 'en' ? 'Logout' : 'התנתקות',
+    contentEditor: language === 'en' ? 'Content Editor' : 'עורך תוכן'
+  };
+
   return (
     <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -96,34 +113,35 @@ const Navbar = () => {
         </Link>
         
         <div className="hidden md:flex space-x-8 text-sm font-medium">
-          <a href="#home" className="text-white hover:text-band-purple transition-colors">HOME</a>
-          <a href="#shows" className="text-white hover:text-band-purple transition-colors">SHOWS</a>
-          <a href="#media" className="text-white hover:text-band-purple transition-colors">MEDIA</a>
-          <a href="#testimonials" className="text-white hover:text-band-purple transition-colors">TESTIMONIALS</a>
-          <a href="#contact" className="text-white hover:text-band-purple transition-colors">CONTACT</a>
+          <a href="#home" className="text-white hover:text-band-purple transition-colors">{menuItems.home}</a>
+          <a href="#shows" className="text-white hover:text-band-purple transition-colors">{menuItems.shows}</a>
+          <a href="#media" className="text-white hover:text-band-purple transition-colors">{menuItems.media}</a>
+          <a href="#testimonials" className="text-white hover:text-band-purple transition-colors">{menuItems.testimonials}</a>
+          <a href="#contact" className="text-white hover:text-band-purple transition-colors">{menuItems.contact}</a>
           {isAdmin && (
             <Link to="/admin" className="text-band-purple hover:text-band-purple/80 transition-colors flex items-center">
-              <span>ADMIN</span>
+              <span>{menuItems.admin}</span>
               {/* Admin badge */}
               <span className="ml-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
             </Link>
           )}
+          <LanguageSwitcher />
           {session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-transparent flex items-center p-0">
                   <UserRoundIcon className="h-4 w-4 mr-1" />
-                  ACCOUNT
+                  {menuItems.account}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-band-dark border-band-purple/30 text-white">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span>My Account</span>
+                    <span>{language === 'en' ? 'My Account' : 'החשבון שלי'}</span>
                     <span className="text-xs text-white/60">{session.user.email}</span>
                     {isAdmin && (
                       <span className="mt-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full w-fit text-band-purple">
-                        Admin
+                        {language === 'en' ? 'Admin' : 'מנהל'}
                       </span>
                     )}
                   </div>
@@ -136,7 +154,7 @@ const Navbar = () => {
                   >
                     <Link to="/editor" className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
-                      <span>Content Editor</span>
+                      <span>{menuItems.contentEditor}</span>
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -145,12 +163,12 @@ const Navbar = () => {
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
+                  <span>{menuItems.logout}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/auth" className="text-white/70 hover:text-white">LOGIN</Link>
+            <Link to="/auth" className="text-white/70 hover:text-white">{menuItems.login}</Link>
           )}
         </div>
         
@@ -162,17 +180,20 @@ const Navbar = () => {
           </SheetTrigger>
           <SheetContent className="bg-band-dark border-band-purple/20 text-white">
             <div className="flex flex-col space-y-4 mt-8">
-              <a href="#home" className="text-white hover:text-band-purple transition-colors text-lg">HOME</a>
-              <a href="#shows" className="text-white hover:text-band-purple transition-colors text-lg">SHOWS</a>
-              <a href="#media" className="text-white hover:text-band-purple transition-colors text-lg">MEDIA</a>
-              <a href="#testimonials" className="text-white hover:text-band-purple transition-colors text-lg">TESTIMONIALS</a>
-              <a href="#contact" className="text-white hover:text-band-purple transition-colors text-lg">CONTACT</a>
+              <a href="#home" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.home}</a>
+              <a href="#shows" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.shows}</a>
+              <a href="#media" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.media}</a>
+              <a href="#testimonials" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.testimonials}</a>
+              <a href="#contact" className="text-white hover:text-band-purple transition-colors text-lg">{menuItems.contact}</a>
               {isAdmin && (
                 <Link to="/admin" className="text-band-purple hover:text-band-purple/80 transition-colors text-lg flex items-center">
-                  <span>ADMIN</span>
+                  <span>{menuItems.admin}</span>
                   <span className="ml-2 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
                 </Link>
               )}
+              <div className="py-2">
+                <LanguageSwitcher />
+              </div>
               
               {session ? (
                 <>
@@ -180,14 +201,14 @@ const Navbar = () => {
                     <p className="text-sm">{session.user.email}</p>
                     {isAdmin && (
                       <span className="mt-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full inline-block text-band-purple">
-                        Admin
+                        {language === 'en' ? 'Admin' : 'מנהל'}
                       </span>
                     )}
                   </div>
                   {isAdmin && (
                     <Link to="/editor" className="text-white/70 hover:text-white flex items-center text-lg">
                       <Settings className="mr-2 h-4 w-4" />
-                      <span>Content Editor</span>
+                      <span>{menuItems.contentEditor}</span>
                     </Link>
                   )}
                   <button 
@@ -195,11 +216,11 @@ const Navbar = () => {
                     className="text-white/70 hover:text-white flex items-center text-lg"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
+                    <span>{menuItems.logout}</span>
                   </button>
                 </>
               ) : (
-                <Link to="/auth" className="text-white/70 hover:text-white text-lg">LOGIN</Link>
+                <Link to="/auth" className="text-white/70 hover:text-white text-lg">{menuItems.login}</Link>
               )}
             </div>
           </SheetContent>

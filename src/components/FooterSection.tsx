@@ -5,6 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { useLanguage } from '@/context/LanguageContext';
+
+interface FooterTranslations {
+  companyName: string;
+  description: string;
+}
 
 interface FooterData {
   companyName: string;
@@ -17,6 +23,10 @@ interface FooterData {
     instagram: string;
     twitter: string;
     youtube: string;
+  };
+  translations?: {
+    en: FooterTranslations;
+    he: FooterTranslations;
   };
 }
 
@@ -31,6 +41,16 @@ const defaultFooterData: FooterData = {
     instagram: '#',
     twitter: '#',
     youtube: '#'
+  },
+  translations: {
+    en: {
+      companyName: 'MOONLIGHT',
+      description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.'
+    },
+    he: {
+      companyName: 'מונלייט',
+      description: 'חווה את הקסם של המוסיקה האיקונית של קולדפליי שמבוצעת בצורה חיה עם תשוקה ודיוק.'
+    }
   }
 };
 
@@ -38,6 +58,7 @@ const FooterSection = () => {
   const [footerData, setFooterData] = useState<FooterData>(defaultFooterData);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const { language } = useLanguage();
 
   useEffect(() => {
     const fetchFooterData = async () => {
@@ -71,7 +92,8 @@ const FooterSection = () => {
               instagram: parsedData.socialLinks?.instagram || defaultFooterData.socialLinks.instagram,
               twitter: parsedData.socialLinks?.twitter || defaultFooterData.socialLinks.twitter,
               youtube: parsedData.socialLinks?.youtube || defaultFooterData.socialLinks.youtube
-            }
+            },
+            translations: parsedData.translations || defaultFooterData.translations
           });
         }
       } catch (error) {
@@ -93,6 +115,15 @@ const FooterSection = () => {
     }
   };
 
+  // Get the appropriate translation based on the selected language
+  const getTranslatedText = (field: keyof FooterTranslations) => {
+    if (footerData.translations && footerData.translations[language]) {
+      return footerData.translations[language][field];
+    }
+    // Fallback to default language (English)
+    return footerData[field];
+  };
+
   return (
     <footer id="contact" className="pt-20 pb-10 bg-black relative overflow-hidden">
       {/* Decorative elements */}
@@ -108,10 +139,10 @@ const FooterSection = () => {
                 alt="Moonlight Logo" 
                 className="w-12 h-12 mr-3"
               />
-              <h3 className="text-white text-xl font-bold text-glow">{footerData.companyName}</h3>
+              <h3 className="text-white text-xl font-bold text-glow">{getTranslatedText('companyName')}</h3>
             </div>
             <p className="text-white/60 mb-6">
-              {footerData.description}
+              {getTranslatedText('description')}
             </p>
             <div className="flex space-x-4">
               <a 
@@ -150,18 +181,18 @@ const FooterSection = () => {
           </div>
           
           <div>
-            <h3 className="text-white font-bold mb-6">Quick Links</h3>
+            <h3 className="text-white font-bold mb-6">{language === 'en' ? 'Quick Links' : 'קישורים מהירים'}</h3>
             <ul className="space-y-3">
-              <li><a href="#home" className="text-white/60 hover:text-band-purple transition-colors">Home</a></li>
-              <li><a href="#shows" className="text-white/60 hover:text-band-purple transition-colors">Upcoming Shows</a></li>
-              <li><a href="#media" className="text-white/60 hover:text-band-purple transition-colors">Media Gallery</a></li>
-              <li><a href="#testimonials" className="text-white/60 hover:text-band-purple transition-colors">Testimonials</a></li>
-              <li><a href="#contact" className="text-white/60 hover:text-band-purple transition-colors">Contact Us</a></li>
+              <li><a href="#home" className="text-white/60 hover:text-band-purple transition-colors">{language === 'en' ? 'Home' : 'דף הבית'}</a></li>
+              <li><a href="#shows" className="text-white/60 hover:text-band-purple transition-colors">{language === 'en' ? 'Upcoming Shows' : 'הופעות קרובות'}</a></li>
+              <li><a href="#media" className="text-white/60 hover:text-band-purple transition-colors">{language === 'en' ? 'Media Gallery' : 'גלריית מדיה'}</a></li>
+              <li><a href="#testimonials" className="text-white/60 hover:text-band-purple transition-colors">{language === 'en' ? 'Testimonials' : 'המלצות'}</a></li>
+              <li><a href="#contact" className="text-white/60 hover:text-band-purple transition-colors">{language === 'en' ? 'Contact Us' : 'צור קשר'}</a></li>
             </ul>
           </div>
           
           <div>
-            <h3 className="text-white font-bold mb-6">Contact Information</h3>
+            <h3 className="text-white font-bold mb-6">{language === 'en' ? 'Contact Information' : 'פרטי התקשרות'}</h3>
             <ul className="space-y-3 text-white/60">
               <li className="flex items-center">
                 <Mail size={16} className="mr-2 text-band-purple" />
@@ -179,13 +210,13 @@ const FooterSection = () => {
           </div>
           
           <div>
-            <h3 className="text-white font-bold mb-6">Newsletter</h3>
+            <h3 className="text-white font-bold mb-6">{language === 'en' ? 'Newsletter' : 'עלון מידע'}</h3>
             <p className="text-white/60 mb-4">
-              Subscribe to get updates on upcoming shows and exclusive content.
+              {language === 'en' ? 'Subscribe to get updates on upcoming shows and exclusive content.' : 'הירשם לקבלת עדכונים על הופעות קרובות ותוכן בלעדי.'}
             </p>
             <div className="flex space-x-2">
               <Input 
-                placeholder="Your email" 
+                placeholder={language === 'en' ? "Your email" : "האימייל שלך"} 
                 className="bg-white/10 border-white/20 text-white"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -194,7 +225,7 @@ const FooterSection = () => {
                 className="bg-band-purple hover:bg-band-purple/80 text-white"
                 onClick={handleSubscribe}
               >
-                Subscribe
+                {language === 'en' ? 'Subscribe' : 'הרשמה'}
               </Button>
             </div>
           </div>
@@ -202,7 +233,7 @@ const FooterSection = () => {
         
         <div className="border-t border-white/10 pt-8 text-center">
           <p className="text-white/40 text-sm">
-            &copy; {new Date().getFullYear()} {footerData.companyName} - Coldplay Tribute Band. All rights reserved.
+            &copy; {new Date().getFullYear()} {getTranslatedText('companyName')} - {language === 'en' ? 'Coldplay Tribute Band. All rights reserved.' : 'להקת מחווה לקולדפליי. כל הזכויות שמורות.'}
           </p>
         </div>
       </div>
