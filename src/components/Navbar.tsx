@@ -100,6 +100,9 @@ const Navbar = () => {
     contentEditor: language === 'en' ? 'Content Editor' : 'עורך תוכן'
   };
 
+  // Define spacing class based on language
+  const menuSpacing = language === 'he' ? 'space-x-10' : 'space-x-8';
+
   return (
     <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -112,7 +115,7 @@ const Navbar = () => {
           <span className="font-bold text-2xl text-white text-glow">MOONLIGHT</span>
         </Link>
         
-        <div className="hidden md:flex space-x-8 text-sm font-medium">
+        <div className={`hidden md:flex ${menuSpacing} text-sm font-medium`}>
           <a href="#home" className="text-white hover:text-band-purple transition-colors">{menuItems.home}</a>
           <a href="#shows" className="text-white hover:text-band-purple transition-colors">{menuItems.shows}</a>
           <a href="#media" className="text-white hover:text-band-purple transition-colors">{menuItems.media}</a>
