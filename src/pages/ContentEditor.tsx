@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +10,7 @@ import HeroEditor from '../components/admin/HeroEditor';
 import ShowsEditor from '../components/admin/ShowsEditor';
 import MediaEditor from '../components/admin/MediaEditor';
 import TestimonialsEditor from '../components/admin/TestimonialsEditor';
+import FooterEditor from '../components/admin/FooterEditor';
 
 const ContentEditor = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -46,7 +46,6 @@ const ContentEditor = () => {
     checkAdminStatus();
   }, []);
 
-  // Redirect if not admin and loading completed
   if (isLoading) {
     return (
       <div className="min-h-screen bg-band-dark flex items-center justify-center">
@@ -79,6 +78,7 @@ const ContentEditor = () => {
             <TabsTrigger value="shows">Shows</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
+            <TabsTrigger value="footer">Footer</TabsTrigger>
           </TabsList>
           
           <TabsContent value="hero">
@@ -121,6 +121,17 @@ const ContentEditor = () => {
               </CardHeader>
               <CardContent>
                 <TestimonialsEditor />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="footer">
+            <Card className="bg-black/50 border-band-purple/20">
+              <CardHeader>
+                <CardTitle className="text-white">Edit Footer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FooterEditor />
               </CardContent>
             </Card>
           </TabsContent>
