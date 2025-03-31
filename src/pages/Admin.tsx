@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle, Settings } from "lucide-react";
 import { 
   Form,
   FormControl,
@@ -144,7 +143,6 @@ const Admin = () => {
         throw new Error("Invalid data format from Google Sheet");
       }
       
-      // Insert each show into the database
       for (const show of data.shows) {
         const { error: insertError } = await supabase
           .from('shows')
@@ -176,7 +174,6 @@ const Admin = () => {
       setIsSubmitting(true);
       
       if (editingShow?.id) {
-        // Update existing show
         const { error } = await supabase
           .from('shows')
           .update({
@@ -196,7 +193,6 @@ const Admin = () => {
           description: "The show has been updated successfully.",
         });
       } else {
-        // Create new show
         const { error } = await supabase
           .from('shows')
           .insert({
@@ -285,7 +281,6 @@ const Admin = () => {
     }
   };
 
-  // Redirect if not admin and loading completed
   if (isLoading) {
     return (
       <div className="min-h-screen bg-band-dark flex items-center justify-center">
@@ -302,7 +297,17 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-band-dark">
       <div className="container mx-auto px-4 py-24">
-        <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white">Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-white">Admin Dashboard</h1>
+          <Button 
+            className="bg-band-blue hover:bg-band-blue/80 flex items-center"
+            asChild
+          >
+            <Link to="/editor">
+              <Settings className="mr-2 h-4 w-4" /> Edit Website Content
+            </Link>
+          </Button>
+        </div>
         
         <Tabs defaultValue="shows" className="w-full">
           <TabsList className="mb-8">
@@ -312,7 +317,6 @@ const Admin = () => {
           
           <TabsContent value="shows">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Show Form */}
               <Card className="lg:col-span-1 bg-black/50 border-band-purple/20">
                 <CardHeader>
                   <CardTitle className="text-white">
@@ -431,7 +435,6 @@ const Admin = () => {
                 </CardContent>
               </Card>
               
-              {/* Shows List */}
               <Card className="lg:col-span-2 bg-black/50 border-band-purple/20">
                 <CardHeader>
                   <CardTitle className="text-white">Manage Shows</CardTitle>
