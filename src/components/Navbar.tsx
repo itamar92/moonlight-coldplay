@@ -23,37 +23,39 @@ const Navbar = () => {
   // Check authentication and admin status
   useEffect(() => {
     const checkSession = async () => {
+      // Get current session
       const { data } = await supabase.auth.getSession();
       setSession(data.session);
 
       if (data.session) {
-        setTimeout(async () => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', data.session.user.id)
-            .single();
-            
-          setIsAdmin(profileData?.is_admin || false);
-        }, 0);
+        // Check if user is admin
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', data.session.user.id)
+          .single();
+          
+        setIsAdmin(!!profileData?.is_admin);
+        console.log("Admin status:", !!profileData?.is_admin, profileData);
       }
     };
 
     checkSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
+    // Listen for authentication changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      setSession(currentSession);
       
-      if (session) {
-        setTimeout(async () => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single();
-            
-          setIsAdmin(profileData?.is_admin || false);
-        }, 0);
+      if (currentSession) {
+        // Check if user is admin when auth state changes
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', currentSession.user.id)
+          .single();
+          
+        setIsAdmin(!!profileData?.is_admin);
+        console.log("Auth change - admin status:", !!profileData?.is_admin, profileData);
       } else {
         setIsAdmin(false);
       }
@@ -109,10 +111,10 @@ const Navbar = () => {
           {session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="text-white/70 hover:text-white flex items-center">
+                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-transparent flex items-center p-0">
                   <UserRoundIcon className="h-4 w-4 mr-1" />
                   ACCOUNT
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-band-dark border-band-purple/30 text-white">
                 <DropdownMenuLabel>

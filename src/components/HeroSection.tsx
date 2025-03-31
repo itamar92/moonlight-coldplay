@@ -50,6 +50,7 @@ const HeroSection = () => {
   const [content, setContent] = useState<HeroContent>(defaultContent);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -85,22 +86,48 @@ const HeroSection = () => {
     
     fetchContent();
     
-    // Check if user is admin
-    const checkAdmin = async () => {
+    // Check for session and admin status
+    const checkAuth = async () => {
+      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
       
       if (session) {
+        // Check if user is admin
         const { data: profileData } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
           .single();
           
-        setIsAdmin(profileData?.is_admin || false);
+        setIsAdmin(!!profileData?.is_admin);
       }
     };
     
-    checkAdmin();
+    checkAuth();
+    
+    // Listen for authentication changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        
+        if (session) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .single();
+            
+          setIsAdmin(!!profileData?.is_admin);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
