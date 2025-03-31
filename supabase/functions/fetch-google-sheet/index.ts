@@ -9,12 +9,8 @@ const corsHeaders = {
 // Parse a date string in dd/MM/yyyy format to a Date object
 function parseDateString(dateString: string): Date | null {
   try {
-    if (!dateString) return null;
-    
     if (dateString.includes('/')) {
       const [day, month, year] = dateString.split('/');
-      if (!day || !month || !year) return null;
-      
       const parsedDate = new Date(`${year}-${month}-${day}`);
       
       if (!isNaN(parsedDate.getTime())) {
@@ -38,8 +34,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Starting Google Sheets fetch operation");
-    
     // Get Google Sheets API key and sheet ID from environment variables
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
     const SHEET_ID = Deno.env.get("GOOGLE_SHEET_ID");
@@ -48,7 +42,6 @@ serve(async (req) => {
     console.log("Sheet ID exists:", !!SHEET_ID);
     
     if (!GOOGLE_API_KEY || !SHEET_ID) {
-      console.error("Missing required environment variables");
       throw new Error("Missing required environment variables");
     }
 
@@ -81,23 +74,21 @@ serve(async (req) => {
     
     if (!data.values || data.values.length === 0) {
       console.log("No data rows found in sheet");
-      return new Response(JSON.stringify({ shows: [], success: true, message: "No data found" }), {
+      return new Response(JSON.stringify({ shows: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
-
-    console.log("Processing rows...");
     
     // Transform Google Sheets data to match our shows format
     // No longer filtering out past events, only filtering private events
     const shows = data.values
       .filter(row => {
         // Log each row for debugging
-        console.log("Row data:", JSON.stringify(row));
+        console.log("Processing row:", JSON.stringify(row));
         
-        if (!row[0] || !row[1] || !row[3]) {
-          console.log("Skipping row due to missing essential data (date, venue, or location)");
+        if (!row[0] || !row[1] || !row[3] || !row[4]) {
+          console.log("Skipping row due to missing essential data");
           return false; // Skip rows with missing essential data
         }
         
@@ -108,8 +99,7 @@ serve(async (req) => {
         }
         return !isPrivate;
       })
-      .map((row, index) => ({
-        id: `gs-${index}`, // Add an explicit ID for each show
+      .map((row) => ({
         date: row[0] || "",         // Date
         venue: row[1] || "",        // Event Name
         location: row[3] || "",     // Location
@@ -120,17 +110,13 @@ serve(async (req) => {
     console.log(`Filtered to ${shows.length} valid shows`);
     console.log("Final shows data:", JSON.stringify(shows));
     
-    return new Response(JSON.stringify({ shows, success: true }), {
+    return new Response(JSON.stringify({ shows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("Error fetching Google Sheets data:", error.message);
-    return new Response(JSON.stringify({ 
-      error: error.message, 
-      success: false,
-      shows: []
-    }), {
+    console.error("Error fetching Google Sheets data:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

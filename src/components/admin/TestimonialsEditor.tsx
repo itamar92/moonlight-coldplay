@@ -1,446 +1,330 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { PlusCircle, Trash2, Edit } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PlusCircle, Trash2, Star } from 'lucide-react';
 
-type Testimonial = {
-  id: number;
-  name: string;
-  location: string;
-  rating: number;
-  text: string;
-};
-
-interface TranslatedContent {
-  title: string;
-  subtitle: string;
-  testimonials: Testimonial[];
+interface Testimonial {
+  id: string;
+  author: string;
+  role: string;
+  content: string;
+  avatar_url?: string;
+  order: number;
 }
 
 const TestimonialsEditor = () => {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingItem, setEditingItem] = useState<Testimonial | null>(null);
+  
+  // Form state
+  const [author, setAuthor] = useState('');
+  const [role, setRole] = useState('');
+  const [content, setContent] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
   const { toast } = useToast();
-  
-  const [content, setContent] = useState<{
-    en: TranslatedContent;
-    he: TranslatedContent;
-  }>({
-    en: {
-      title: "FAN TESTIMONIALS",
-      subtitle: "Hear what our fans have to say about the Moonlight experience.",
-      testimonials: []
-    },
-    he: {
-      title: "המלצות מעריצים",
-      subtitle: "שמעו מה המעריצים שלנו אומרים על החוויה של מונלייט.",
-      testimonials: []
-    }
-  });
-  
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchTestimonialsContent = async () => {
-      try {
-        setIsLoading(true);
-        const { data, error } = await supabase
-          .from('content')
-          .select('content')
-          .eq('section', 'testimonials')
-          .single();
-          
-        if (error) {
-          if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
-            console.error('Error fetching testimonials content:', error);
-          }
-          setIsLoading(false);
-          return;
-        }
-        
-        if (data?.content) {
-          setContent(JSON.parse(JSON.stringify(data.content)));
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error parsing testimonials content:', error);
-        setIsLoading(false);
-      }
-    };
-    
-    fetchTestimonialsContent();
+    fetchTestimonials();
   }, []);
 
-  const handleSave = async () => {
+  const fetchTestimonials = async () => {
+    setLoading(true);
     try {
-      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('order', { ascending: true });
+        
+      if (error) throw error;
       
-      const { data: existingData, error: checkError } = await supabase
-        .from('content')
-        .select('id')
-        .eq('section', 'testimonials')
-        .single();
-      
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-      
-      let result;
-      
-      if (existingData) {
-        // Update existing record
-        result = await supabase
-          .from('content')
-          .update({
-            content: JSON.parse(JSON.stringify(content)),
-            updated_at: new Date().toISOString()
-          })
-          .eq('section', 'testimonials');
-      } else {
-        // Insert new record
-        result = await supabase
-          .from('content')
-          .insert({
-            section: 'testimonials',
-            content: JSON.parse(JSON.stringify(content)),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-      }
-      
-      if (result.error) {
-        throw result.error;
-      }
-      
-      toast({
-        title: "Testimonials saved",
-        description: "Your changes have been saved successfully."
-      });
+      setTestimonials(data || []);
     } catch (error) {
-      console.error('Error saving testimonials:', error);
+      console.error('Error fetching testimonials:', error);
       toast({
-        variant: "destructive",
-        title: "Error saving testimonials",
-        description: "There was a problem saving your changes. Please try again."
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load testimonials.',
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const addTestimonial = (language: 'en' | 'he') => {
-    const newId = Math.max(0, ...content[language].testimonials.map(t => t.id)) + 1;
+  const resetForm = () => {
+    setEditingItem(null);
+    setAuthor('');
+    setRole('');
+    setContent('');
+    setAvatarFile(null);
+  };
+
+  const handleEdit = (item: Testimonial) => {
+    setEditingItem(item);
+    setAuthor(item.author);
+    setRole(item.role);
+    setContent(item.content);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this testimonial?')) return;
     
-    setContent({
-      ...content,
-      [language]: {
-        ...content[language],
-        testimonials: [
-          ...content[language].testimonials,
-          {
-            id: newId,
-            name: language === 'en' ? "New Testimonial" : "המלצה חדשה",
-            location: language === 'en' ? "City, Country" : "עיר, מדינה",
-            rating: 5,
-            text: language === 'en' ? "Enter testimonial text here" : "הכנס טקסט המלצה כאן"
-          }
-        ]
-      }
-    });
-  };
-
-  const removeTestimonial = (language: 'en' | 'he', id: number) => {
-    setContent({
-      ...content,
-      [language]: {
-        ...content[language],
-        testimonials: content[language].testimonials.filter(t => t.id !== id)
-      }
-    });
-  };
-
-  const updateTestimonial = (language: 'en' | 'he', id: number, field: keyof Testimonial, value: any) => {
-    setContent({
-      ...content,
-      [language]: {
-        ...content[language],
-        testimonials: content[language].testimonials.map(t => 
-          t.id === id ? { ...t, [field]: field === 'rating' ? Number(value) : value } : t
-        )
-      }
-    });
-  };
-
-  const updateContentField = (language: 'en' | 'he', field: keyof TranslatedContent, value: any) => {
-    if (field !== 'testimonials') {
-      setContent({
-        ...content,
-        [language]: {
-          ...content[language],
-          [field]: value
-        }
+    try {
+      const { error } = await supabase
+        .from('testimonials')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setTestimonials(testimonials.filter(item => item.id !== id));
+      
+      toast({
+        title: 'Success',
+        description: 'Testimonial deleted successfully.',
+      });
+    } catch (error) {
+      console.error('Error deleting testimonial:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete testimonial.',
       });
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-        <p className="ml-3 text-white">Loading testimonials...</p>
-      </div>
-    );
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!author || !role || !content) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please fill in all required fields.',
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      let avatarUrl = editingItem?.avatar_url || '';
+      
+      // Upload new avatar if provided
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `avatar-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('content')
+          .upload(fileName, avatarFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('content')
+          .getPublicUrl(fileName);
+          
+        avatarUrl = publicUrlData.publicUrl;
+      }
+      
+      if (editingItem) {
+        // Update existing testimonial
+        const { error } = await supabase
+          .from('testimonials')
+          .update({
+            author,
+            role,
+            content,
+            avatar_url: avatarUrl || editingItem.avatar_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingItem.id);
+          
+        if (error) throw error;
+        
+        setTestimonials(testimonials.map(item => 
+          item.id === editingItem.id 
+            ? { ...item, author, role, content, avatar_url: avatarUrl || item.avatar_url } 
+            : item
+        ));
+      } else {
+        // Create new testimonial
+        const newItem = {
+          author,
+          role,
+          content,
+          avatar_url: avatarUrl,
+          order: testimonials.length + 1
+        };
+        
+        const { error, data } = await supabase
+          .from('testimonials')
+          .insert([newItem])
+          .select();
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setTestimonials([...testimonials, data[0]]);
+        }
+      }
+      
+      resetForm();
+      
+      toast({
+        title: 'Success',
+        description: `Testimonial ${editingItem ? 'updated' : 'added'} successfully!`,
+      });
+    } catch (error) {
+      console.error('Error saving testimonial:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: `Failed to ${editingItem ? 'update' : 'add'} testimonial.`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue="english" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="english">English</TabsTrigger>
-          <TabsTrigger value="hebrew">Hebrew (עברית)</TabsTrigger>
-        </TabsList>
+    <div className="space-y-8">
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4 p-6 bg-black/30 rounded-lg border border-white/10">
+        <h3 className="text-lg font-medium text-white mb-4">
+          {editingItem ? 'Edit Testimonial' : 'Add New Testimonial'}
+        </h3>
         
-        {/* English Content */}
-        <TabsContent value="english" className="space-y-6">
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="en-title" className="text-white mb-2 block">Section Title</Label>
-              <Input
-                id="en-title"
-                value={content.en.title}
-                onChange={(e) => updateContentField('en', 'title', e.target.value)}
-                className="bg-black/30 border-white/20 text-white"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="en-subtitle" className="text-white mb-2 block">Section Subtitle</Label>
-              <Input
-                id="en-subtitle"
-                value={content.en.subtitle}
-                onChange={(e) => updateContentField('en', 'subtitle', e.target.value)}
-                className="bg-black/30 border-white/20 text-white"
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="author" className="text-white">Author Name</Label>
+            <Input
+              id="author"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              className="bg-black/50"
+              required
+            />
           </div>
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-white">Testimonials</h3>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-band-purple text-band-purple hover:bg-band-purple/10"
-                onClick={() => addTestimonial('en')}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Testimonial
-              </Button>
-            </div>
-            
-            {content.en.testimonials.length === 0 ? (
-              <p className="text-white/60 text-center py-8">No testimonials yet. Add your first one!</p>
-            ) : (
-              <div className="space-y-4">
-                {content.en.testimonials.map((testimonial) => (
-                  <Card key={testimonial.id} className="bg-black/30 border-white/20">
-                    <CardContent className="p-4 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <Label htmlFor={`name-${testimonial.id}`} className="text-white">Name</Label>
-                          <Input
-                            id={`name-${testimonial.id}`}
-                            value={testimonial.name}
-                            onChange={(e) => updateTestimonial('en', testimonial.id, 'name', e.target.value)}
-                            className="bg-black/30 border-white/20 text-white"
-                          />
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                          onClick={() => removeTestimonial('en', testimonial.id)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`location-${testimonial.id}`} className="text-white">Location</Label>
-                        <Input
-                          id={`location-${testimonial.id}`}
-                          value={testimonial.location}
-                          onChange={(e) => updateTestimonial('en', testimonial.id, 'location', e.target.value)}
-                          className="bg-black/30 border-white/20 text-white"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`rating-${testimonial.id}`} className="text-white">Rating (1-5)</Label>
-                        <div className="flex items-center space-x-1 mt-1">
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <Button
-                              key={rating}
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={`p-1 ${rating <= testimonial.rating ? 'text-band-pink' : 'text-white/30'}`}
-                              onClick={() => updateTestimonial('en', testimonial.id, 'rating', rating)}
-                            >
-                              <Star className={`h-5 w-5 ${rating <= testimonial.rating ? 'fill-band-pink' : ''}`} />
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`text-${testimonial.id}`} className="text-white">Testimonial Text</Label>
-                        <Textarea
-                          id={`text-${testimonial.id}`}
-                          value={testimonial.text}
-                          onChange={(e) => updateTestimonial('en', testimonial.id, 'text', e.target.value)}
-                          className="bg-black/30 border-white/20 text-white min-h-[100px]"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="role" className="text-white">Role/Position</Label>
+            <Input
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="bg-black/50"
+              required
+              placeholder="Fan, Music Critic, etc."
+            />
           </div>
-        </TabsContent>
+        </div>
         
-        {/* Hebrew Content */}
-        <TabsContent value="hebrew" className="space-y-6">
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="he-title" className="text-white mb-2 block">Section Title (כותרת)</Label>
-              <Input
-                id="he-title"
-                value={content.he.title}
-                onChange={(e) => updateContentField('he', 'title', e.target.value)}
-                className="bg-black/30 border-white/20 text-white text-right"
-                dir="rtl"
+        <div className="space-y-2">
+          <Label htmlFor="content" className="text-white">Testimonial Content</Label>
+          <Textarea
+            id="content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="bg-black/50 min-h-[100px]"
+            required
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="avatar" className="text-white">Avatar Image (Optional)</Label>
+          <Input
+            id="avatar"
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files && setAvatarFile(e.target.files[0])}
+            className="bg-black/50"
+          />
+          {editingItem?.avatar_url && (
+            <div className="mt-2 h-16 w-16 rounded-full bg-black/30 overflow-hidden">
+              <img 
+                src={editingItem.avatar_url}
+                alt={`${editingItem.author} avatar`}
+                className="h-full w-full object-cover"
               />
             </div>
-            
-            <div>
-              <Label htmlFor="he-subtitle" className="text-white mb-2 block">Section Subtitle (תת כותרת)</Label>
-              <Input
-                id="he-subtitle"
-                value={content.he.subtitle}
-                onChange={(e) => updateContentField('he', 'subtitle', e.target.value)}
-                className="bg-black/30 border-white/20 text-white text-right"
-                dir="rtl"
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-white">Testimonials (המלצות)</h3>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-band-purple text-band-purple hover:bg-band-purple/10"
-                onClick={() => addTestimonial('he')}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                הוסף המלצה
-              </Button>
-            </div>
-            
-            {content.he.testimonials.length === 0 ? (
-              <p className="text-white/60 text-center py-8">אין המלצות עדיין. הוסף את הראשונה!</p>
-            ) : (
-              <div className="space-y-4">
-                {content.he.testimonials.map((testimonial) => (
-                  <Card key={testimonial.id} className="bg-black/30 border-white/20">
-                    <CardContent className="p-4 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <Label htmlFor={`he-name-${testimonial.id}`} className="text-white">Name (שם)</Label>
-                          <Input
-                            id={`he-name-${testimonial.id}`}
-                            value={testimonial.name}
-                            onChange={(e) => updateTestimonial('he', testimonial.id, 'name', e.target.value)}
-                            className="bg-black/30 border-white/20 text-white text-right"
-                            dir="rtl"
-                          />
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                          onClick={() => removeTestimonial('he', testimonial.id)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`he-location-${testimonial.id}`} className="text-white">Location (מיקום)</Label>
-                        <Input
-                          id={`he-location-${testimonial.id}`}
-                          value={testimonial.location}
-                          onChange={(e) => updateTestimonial('he', testimonial.id, 'location', e.target.value)}
-                          className="bg-black/30 border-white/20 text-white text-right"
-                          dir="rtl"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`he-rating-${testimonial.id}`} className="text-white">Rating (דירוג 1-5)</Label>
-                        <div className="flex items-center space-x-1 mt-1">
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <Button
-                              key={rating}
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={`p-1 ${rating <= testimonial.rating ? 'text-band-pink' : 'text-white/30'}`}
-                              onClick={() => updateTestimonial('he', testimonial.id, 'rating', rating)}
-                            >
-                              <Star className={`h-5 w-5 ${rating <= testimonial.rating ? 'fill-band-pink' : ''}`} />
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`he-text-${testimonial.id}`} className="text-white">Testimonial Text (טקסט)</Label>
-                        <Textarea
-                          id={`he-text-${testimonial.id}`}
-                          value={testimonial.text}
-                          onChange={(e) => updateTestimonial('he', testimonial.id, 'text', e.target.value)}
-                          className="bg-black/30 border-white/20 text-white min-h-[100px] text-right"
-                          dir="rtl"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+          )}
+        </div>
+        
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={resetForm}
+            className="border-white/20 text-white hover:bg-white/10"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="bg-band-purple hover:bg-band-purple/80"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : (editingItem ? 'Update Testimonial' : 'Add Testimonial')}
+          </Button>
+        </div>
+      </form>
       
-      <div className="flex justify-end">
-        <Button 
-          onClick={handleSave} 
-          disabled={isLoading}
-          className="bg-band-purple hover:bg-band-purple/90"
-        >
-          {isLoading ? "Saving..." : "Save Changes"}
-        </Button>
+      {/* Testimonials list */}
+      <div className="space-y-4">
+        {testimonials.length === 0 ? (
+          <div className="text-center py-8 text-white/70">
+            <p>No testimonials added yet.</p>
+          </div>
+        ) : (
+          testimonials.map((item) => (
+            <div key={item.id} className="p-6 border border-white/10 rounded-lg bg-black/30 relative group">
+              <div className="flex items-start">
+                {item.avatar_url && (
+                  <div className="h-12 w-12 rounded-full overflow-hidden mr-4 flex-shrink-0">
+                    <img
+                      src={item.avatar_url}
+                      alt={`${item.author} avatar`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <p className="text-white/90 italic mb-3">"{item.content}"</p>
+                  <div>
+                    <h4 className="text-white font-medium">{item.author}</h4>
+                    <p className="text-sm text-white/60">{item.role}</p>
+                  </div>
+                </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleEdit(item)}
+                    className="bg-black/50 text-white hover:bg-black/70 mr-1"
+                  >
+                    <Edit size={16} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleDelete(item.id)}
+                    className="bg-black/50 text-white hover:bg-red-900/70"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
