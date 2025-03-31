@@ -19,8 +19,12 @@ interface Show {
 // Parse a date string in dd/MM/yyyy format to a Date object
 function parseDateString(dateString: string): Date | null {
   try {
+    if (!dateString) return null;
+    
     if (dateString.includes('/')) {
       const [day, month, year] = dateString.split('/');
+      if (!day || !month || !year) return null;
+      
       const parsedDate = new Date(`${year}-${month}-${day}`);
       
       if (!isNaN(parsedDate.getTime())) {
@@ -94,15 +98,17 @@ const ShowsSection = () => {
         
         // If no data in Supabase, try to fetch from Google Sheets
         console.log("No Supabase data, trying Google Sheets...");
-        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
+        const response = await supabase.functions.invoke(
           'fetch-google-sheet'
         );
 
-        if (functionError) {
-          console.error('Function error:', functionError);
-          throw functionError;
+        if (response.error) {
+          console.error('Function error:', response.error);
+          throw response.error;
         }
         
+        const googleSheetsData = response.data;
+
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
           console.log("Using Google Sheets data:", googleSheetsData.shows);
           setShows(googleSheetsData.shows.slice(0, 4)); // Only show the first 4 shows in the homepage section
@@ -116,7 +122,7 @@ const ShowsSection = () => {
         toast({
           variant: 'destructive',
           title: 'Error fetching shows',
-          description: "Couldn't load upcoming shows. Please try again later.",
+          description: error.message || "Couldn't load upcoming shows. Please try again later.",
         });
       } finally {
         setLoading(false);
@@ -124,7 +130,7 @@ const ShowsSection = () => {
     };
 
     fetchShows();
-  }, []);
+  }, [toast]);
 
   // Format the date for display
   const formatDate = (dateString: string) => {
@@ -142,6 +148,7 @@ const ShowsSection = () => {
       }
       return dateString; // Fall back to original string if parsing fails
     } catch (e) {
+      console.error('Error formatting date:', e);
       return dateString; // Return original date string in case of error
     }
   };

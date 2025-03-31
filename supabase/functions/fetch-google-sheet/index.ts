@@ -9,8 +9,12 @@ const corsHeaders = {
 // Parse a date string in dd/MM/yyyy format to a Date object
 function parseDateString(dateString: string): Date | null {
   try {
+    if (!dateString) return null;
+    
     if (dateString.includes('/')) {
       const [day, month, year] = dateString.split('/');
+      if (!day || !month || !year) return null;
+      
       const parsedDate = new Date(`${year}-${month}-${day}`);
       
       if (!isNaN(parsedDate.getTime())) {
@@ -77,7 +81,7 @@ serve(async (req) => {
     
     if (!data.values || data.values.length === 0) {
       console.log("No data rows found in sheet");
-      return new Response(JSON.stringify({ shows: [], message: "No data found" }), {
+      return new Response(JSON.stringify({ shows: [], success: true, message: "No data found" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
