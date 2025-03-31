@@ -161,8 +161,9 @@ const HeroSection = () => {
     // Check for session and admin status
     const checkAuth = async () => {
       try {
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
+        // Get current session - fixed method call
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
         
         setSession(session);
         

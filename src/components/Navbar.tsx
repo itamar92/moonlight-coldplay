@@ -27,7 +27,7 @@ const Navbar = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Get current session
+        // Get current session - fixed method call
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
 

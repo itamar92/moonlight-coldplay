@@ -16,8 +16,9 @@ const Index = () => {
   useEffect(() => {
     const checkForAdminUser = async () => {
       try {
-        // Check if session exists
-        const { data: { session } } = await supabase.auth.getSession();
+        // Check if session exists - fixed method call
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
         
         if (session) {
           console.log('User is already logged in');
@@ -43,10 +44,6 @@ const Index = () => {
         
         // Only proceed with checking if no admin exists
         console.log('No admin found in profiles, but not creating one automatically');
-        
-        // Remove the problematic code that tries to use getUserByEmail
-        // This line was causing the TypeScript error
-        // const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserByEmail('itamar92@gmail.com');
       } catch (error) {
         console.error('Error in admin user check:', error);
       }
