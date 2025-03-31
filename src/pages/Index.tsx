@@ -12,71 +12,33 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const { toast } = useToast();
 
-  // Only run once when the app initializes to ensure admin user exists
+  // Only check if admin exists, don't try to create one automatically
   useEffect(() => {
-    const createAdminUser = async () => {
+    const checkAdminUser = async () => {
       try {
-        // Check if the admin user already exists by trying to sign in
-        const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
-          email: 'itamar92@gmail.com',
-          password: 'admin123456', // Use a longer password to meet requirements
-        });
+        // Check if there are any admin users in the profiles table
+        const { data: adminUsers, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('is_admin', true)
+          .limit(1);
         
-        // If user exists and sign-in was successful, we're done
-        if (existingUser?.user) {
-          console.log('Admin user already exists and credentials are valid');
-          
-          // Ensure the user has admin privileges
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ is_admin: true })
-            .eq('id', existingUser.user.id);
-          
-          if (updateError) {
-            console.error('Error updating admin privileges:', updateError);
-          }
-          
+        if (error) {
+          console.error('Error checking for admin users:', error);
           return;
         }
         
-        // If sign-in failed because the user doesn't exist, create the user
-        if (signInError) {
-          console.log('Creating admin user...');
-          // Try to create the admin user
-          const { data: newUser, error: signupError } = await supabase.auth.signUp({
-            email: 'itamar92@gmail.com',
-            password: 'admin123456', // Use a longer password to meet requirements
-          });
-          
-          if (signupError) {
-            console.error('Error creating admin user:', signupError);
-            return;
-          }
-          
-          // If user was created successfully, set them as admin in profiles table
-          if (newUser?.user) {
-            console.log('Admin user created:', newUser.user.id);
-            // Wait a moment for the user to be fully created
-            setTimeout(async () => {
-              const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ is_admin: true })
-                .eq('id', newUser.user.id);
-              
-              if (updateError) {
-                console.error('Error updating user profile:', updateError);
-              } else {
-                console.log('Admin user created successfully');
-              }
-            }, 1000);
-          }
+        if (adminUsers && adminUsers.length > 0) {
+          console.log('Admin user already exists');
+        } else {
+          console.log('No admin users found. You can create one through the authentication page.');
         }
       } catch (error) {
-        console.error('Error in admin user creation:', error);
+        console.error('Error in admin user check:', error);
       }
     };
     
-    createAdminUser();
+    checkAdminUser();
   }, []);
 
   return (
