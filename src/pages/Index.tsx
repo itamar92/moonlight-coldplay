@@ -49,7 +49,9 @@ const Index = () => {
       }
     };
     
-    checkForAdminUser();
+    checkForAdminUser().catch(error => {
+      console.error('Unhandled error in admin user check:', error);
+    });
   }, []);
 
   return (

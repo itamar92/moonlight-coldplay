@@ -96,8 +96,9 @@ const HeroSection = () => {
           .single();
         
         if (error) {
+          console.error('Error fetching hero content:', error);
+          
           if (error.code !== 'PGRST116') { // Not found error
-            console.error('Error fetching hero content:', error);
             toast({
               variant: 'destructive',
               title: 'Error loading content',
@@ -106,6 +107,9 @@ const HeroSection = () => {
           } else {
             console.log('Hero content not found in database, using defaults');
           }
+          
+          // Even if there's an error, we should still end the loading state
+          setLoading(false);
           return;
         }
         
@@ -152,6 +156,7 @@ const HeroSection = () => {
           description: 'There was a problem loading the hero content.'
         });
       } finally {
+        // Make sure to set loading to false regardless of success or failure
         setLoading(false);
       }
     };
@@ -169,13 +174,17 @@ const HeroSection = () => {
         
         if (session) {
           // Check if user is admin
-          const { data: profileData } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('is_admin')
             .eq('id', session.user.id)
             .single();
             
-          setIsAdmin(!!profileData?.is_admin);
+          if (profileError) {
+            console.error('Error checking admin status:', profileError);
+          } else {
+            setIsAdmin(!!profileData?.is_admin);
+          }
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -186,14 +195,14 @@ const HeroSection = () => {
     
     // Listen for authentication changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
+      async (event, newSession) => {
+        setSession(newSession);
         
-        if (session) {
+        if (newSession) {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('is_admin')
-            .eq('id', session.user.id)
+            .eq('id', newSession.user.id)
             .single();
             
           setIsAdmin(!!profileData?.is_admin);
