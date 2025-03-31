@@ -41,31 +41,12 @@ const Index = () => {
           return;
         }
         
-        // Only proceed with creating admin if no admin exists
-        console.log('No admin found in profiles, attempting to check if admin email exists');
+        // Only proceed with checking if no admin exists
+        console.log('No admin found in profiles, but not creating one automatically');
         
-        // Check if the email exists in auth
-        const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserByEmail('itamar92@gmail.com');
-        
-        if (user) {
-          console.log('Admin email exists, updating profile');
-          // Ensure the user has admin privileges
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ is_admin: true })
-            .eq('id', user.id);
-          
-          if (updateError) {
-            console.error('Error updating admin privileges:', updateError);
-          } else {
-            console.log('Admin privileges updated successfully');
-          }
-          return;
-        }
-        
-        // If we get here, there's no admin user at all, but we won't create one
-        // as that seems to be causing issues
-        console.log('No admin user found, but not creating one automatically');
+        // Remove the problematic code that tries to use getUserByEmail
+        // This line was causing the TypeScript error
+        // const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserByEmail('itamar92@gmail.com');
       } catch (error) {
         console.error('Error in admin user check:', error);
       }
