@@ -43,7 +43,8 @@ const HeroSection = () => {
         }
         
         if (data && data.content) {
-          setContent(data.content);
+          // Type assertion to ensure the JSON is treated as HeroContent
+          setContent(data.content as HeroContent);
         }
       } catch (error) {
         console.error('Error in hero content fetch:', error);

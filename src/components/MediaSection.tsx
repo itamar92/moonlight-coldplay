@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
@@ -33,9 +32,16 @@ const MediaSection = () => {
           return;
         }
         
-        // Filter media into photos and videos
-        const photosData = data?.filter(item => item.type === 'photo') || [];
-        const videosData = data?.filter(item => item.type === 'video') || [];
+        // Filter media into photos and videos with proper type casting
+        const photosData = data?.filter(item => item.type === 'photo').map(item => ({
+          ...item,
+          type: 'photo' as const
+        })) || [];
+        
+        const videosData = data?.filter(item => item.type === 'video').map(item => ({
+          ...item,
+          type: 'video' as const
+        })) || [];
         
         setPhotos(photosData);
         setVideos(videosData);
@@ -51,18 +57,18 @@ const MediaSection = () => {
 
   // Fallback to sample data if no database data is available
   const defaultPhotos = [
-    { id: '1', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Concert photo 1", description: "Live at Starlight Arena" },
-    { id: '2', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 2", description: "Summer Tour 2023" },
-    { id: '3', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 3", description: "Acoustic Session" },
-    { id: '4', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb", title: "Concert photo 4", description: "Behind the Scenes" },
-    { id: '5', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 5", description: "Fan Meetup" },
-    { id: '6', type: 'photo' as 'photo', url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 6", description: "Live at The Paradise" },
+    { id: '1', type: 'photo' as const, url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Concert photo 1", description: "Live at Starlight Arena" },
+    { id: '2', type: 'photo' as const, url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 2", description: "Summer Tour 2023" },
+    { id: '3', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 3", description: "Acoustic Session" },
+    { id: '4', type: 'photo' as const, url: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb", title: "Concert photo 4", description: "Behind the Scenes" },
+    { id: '5', type: 'photo' as const, url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 5", description: "Fan Meetup" },
+    { id: '6', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 6", description: "Live at The Paradise" },
   ];
   
   const defaultVideos = [
     { 
       id: '1', 
-      type: 'video' as 'video', 
+      type: 'video' as const, 
       url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
       thumbnail: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", 
       title: "Yellow - Live at Starlight Arena",
@@ -70,7 +76,7 @@ const MediaSection = () => {
     },
     { 
       id: '2', 
-      type: 'video' as 'video',
+      type: 'video' as const,
       url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
       thumbnail: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", 
       title: "Fix You - Acoustic Version",
@@ -78,7 +84,7 @@ const MediaSection = () => {
     },
     { 
       id: '3', 
-      type: 'video' as 'video',
+      type: 'video' as const,
       url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
       thumbnail: "https://images.unsplash.com/photo-1500673922987-e212871fec22", 
       title: "The Scientist - Behind the Scenes",

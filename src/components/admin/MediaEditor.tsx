@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +49,15 @@ const MediaEditor = () => {
         
       if (error) throw error;
       
-      const photosData = data?.filter(item => item.type === 'photo') || [];
-      const videosData = data?.filter(item => item.type === 'video') || [];
+      const photosData = data?.filter(item => item.type === 'photo').map(item => ({
+        ...item,
+        type: 'photo' as const
+      })) || [];
+      
+      const videosData = data?.filter(item => item.type === 'video').map(item => ({
+        ...item,
+        type: 'video' as const
+      })) || [];
       
       setPhotos(photosData);
       setVideos(videosData);
@@ -139,7 +145,6 @@ const MediaEditor = () => {
     try {
       let imageUrl = editingItem?.url || '';
       
-      // Upload new image if provided
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `photo-${Date.now()}.${fileExt}`;
@@ -158,7 +163,6 @@ const MediaEditor = () => {
       }
       
       if (editingItem) {
-        // Update existing photo
         const { error } = await supabase
           .from('media')
           .update({
@@ -177,9 +181,8 @@ const MediaEditor = () => {
             : photo
         ));
       } else {
-        // Create new photo
         const newItem = {
-          type: 'photo',
+          type: 'photo' as const,
           title,
           description,
           url: imageUrl,
@@ -194,7 +197,7 @@ const MediaEditor = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          setPhotos([...photos, data[0]]);
+          setPhotos([...photos, {...data[0], type: 'photo' as const}]);
         }
       }
       
@@ -233,18 +236,15 @@ const MediaEditor = () => {
     try {
       let thumbnailUrl = editingItem?.thumbnail || '';
       
-      // Extract YouTube video ID from URL
       const videoId = extractYouTubeId(videoUrl);
       if (!videoId) {
         throw new Error('Invalid YouTube URL');
       }
       
-      // Use YouTube thumbnail if no custom thumbnail is provided
       if (!thumbnailUrl && !videoThumbnailFile) {
         thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
       
-      // Upload new thumbnail if provided
       if (videoThumbnailFile) {
         const fileExt = videoThumbnailFile.name.split('.').pop();
         const fileName = `video-thumb-${Date.now()}.${fileExt}`;
@@ -262,11 +262,9 @@ const MediaEditor = () => {
         thumbnailUrl = publicUrlData.publicUrl;
       }
       
-      // Format YouTube embed URL
       const embedUrl = `https://www.youtube.com/embed/${videoId}`;
       
       if (editingItem) {
-        // Update existing video
         const { error } = await supabase
           .from('media')
           .update({
@@ -287,9 +285,8 @@ const MediaEditor = () => {
             : video
         ));
       } else {
-        // Create new video
         const newItem = {
-          type: 'video',
+          type: 'video' as const,
           title,
           description,
           url: embedUrl,
@@ -306,7 +303,7 @@ const MediaEditor = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          setVideos([...videos, data[0]]);
+          setVideos([...videos, {...data[0], type: 'video' as const}]);
         }
       }
       
@@ -328,7 +325,6 @@ const MediaEditor = () => {
     }
   };
 
-  // Helper function to extract YouTube video ID
   const extractYouTubeId = (url: string): string | null => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
@@ -348,7 +344,6 @@ const MediaEditor = () => {
         </TabsList>
         
         <TabsContent value="photos" className="space-y-8">
-          {/* Photo upload form */}
           <form onSubmit={handleSubmitPhoto} className="space-y-4 p-6 bg-black/30 rounded-lg border border-white/10">
             <h3 className="text-lg font-medium text-white mb-4">
               {editingItem ? 'Edit Photo' : 'Add New Photo'}
@@ -417,7 +412,6 @@ const MediaEditor = () => {
             </div>
           </form>
           
-          {/* Photos grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {photos.map((photo) => (
               <div key={photo.id} className="relative group overflow-hidden rounded-lg border border-white/10">
@@ -456,7 +450,6 @@ const MediaEditor = () => {
         </TabsContent>
         
         <TabsContent value="videos" className="space-y-8">
-          {/* Video upload form */}
           <form onSubmit={handleSubmitVideo} className="space-y-4 p-6 bg-black/30 rounded-lg border border-white/10">
             <h3 className="text-lg font-medium text-white mb-4">
               {editingItem ? 'Edit Video' : 'Add New Video'}
@@ -550,7 +543,6 @@ const MediaEditor = () => {
             </div>
           </form>
           
-          {/* Videos grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {videos.map((video) => (
               <div key={video.id} className="relative group overflow-hidden rounded-lg border border-white/10">

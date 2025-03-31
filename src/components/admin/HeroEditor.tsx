@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +51,7 @@ const HeroEditor = () => {
         }
         
         if (data) {
-          setContent(data.content);
+          setContent(data.content as HeroContent);
         }
       } catch (error) {
         console.error('Error fetching hero content:', error);
@@ -85,7 +84,6 @@ const HeroEditor = () => {
     try {
       let logoUrl = content.logo_url;
       
-      // Upload new logo if provided
       if (logoFile) {
         const fileExt = logoFile.name.split('.').pop();
         const fileName = `hero-logo-${Date.now()}.${fileExt}`;
@@ -103,13 +101,11 @@ const HeroEditor = () => {
         logoUrl = publicUrlData.publicUrl;
       }
       
-      // Prepare content with new logo URL if uploaded
       const updatedContent = {
         ...content,
         logo_url: logoUrl
       };
       
-      // Upsert content in the content table
       const { error } = await supabase
         .from('content')
         .upsert({
