@@ -16,6 +16,18 @@ interface Testimonial {
   avatar_url?: string;
 }
 
+// Define the database testimonial type
+interface DbTestimonial {
+  id: string;
+  author: string;
+  role: string;
+  content: string;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+  order: number;
+}
+
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +45,18 @@ const TestimonialsSection = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          setTestimonials(data);
+          // Transform database testimonials to match our Testimonial interface
+          const mappedTestimonials: Testimonial[] = data.map((item: DbTestimonial) => ({
+            id: item.id,
+            author: item.author,
+            role: item.role,
+            location: item.role, // Use role as location
+            content: item.content,
+            avatar_url: item.avatar_url,
+            rating: 5 // Add default rating
+          }));
+          
+          setTestimonials(mappedTestimonials);
         } else {
           // Fallback to sample testimonials if none in database
           setTestimonials([
