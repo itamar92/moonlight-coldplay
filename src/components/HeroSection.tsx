@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Json } from '@/integrations/supabase/types';
+import { Link } from 'react-router-dom';
+import { Edit } from 'lucide-react';
 
 interface HeroContent {
   title: string;
@@ -47,6 +49,7 @@ const isValidHeroContent = (obj: any): obj is HeroContent => {
 const HeroSection = () => {
   const [content, setContent] = useState<HeroContent>(defaultContent);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -81,10 +84,44 @@ const HeroSection = () => {
     };
     
     fetchContent();
+    
+    // Check if user is admin
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+          
+        setIsAdmin(profileData?.is_admin || false);
+      }
+    };
+    
+    checkAdmin();
   }, []);
 
   return (
     <section id="home" className="relative min-h-screen flex flex-col items-center justify-center pt-16 overflow-hidden">
+      {/* Admin Edit Button */}
+      {isAdmin && (
+        <div className="absolute top-20 right-4 z-20">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-black/40 border-band-purple text-band-purple hover:bg-black/60 flex items-center gap-2" 
+            asChild
+          >
+            <Link to="/editor">
+              <Edit size={16} />
+              Edit Content
+            </Link>
+          </Button>
+        </div>
+      )}
+      
       {/* Background with Logo */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full h-full flex items-center justify-center">
