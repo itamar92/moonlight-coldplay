@@ -34,7 +34,7 @@ const Navbar = () => {
 
   const getNavItemSpacing = () => {
     // Add more spacing between Hebrew nav items
-    return language === 'he' ? 'mx-4' : 'mx-3';
+    return language === 'he' ? 'mx-6' : 'mx-3';
   };
 
   const navItems = [

@@ -6,6 +6,7 @@ import { Calendar, MapPin } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Show {
   id: string;
@@ -40,10 +41,37 @@ const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { language } = useLanguage();
+
+  const translations = {
+    en: {
+      title: "UPCOMING SHOWS",
+      description: "Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!",
+      loading: "Loading upcoming shows...",
+      noShows: "No upcoming shows scheduled at the moment.",
+      checkBack: "Check back soon!",
+      getTickets: "GET TICKETS",
+      contactButton: "CONTACT FOR BOOKINGS",
+      viewAllButton: "VIEW ALL SHOWS"
+    },
+    he: {
+      title: "הופעות קרובות",
+      description: "אל תפספסו את ההזדמנות לחוות את הקסם של המוזיקה של מונלייט בהופעה חיה. בדקו את לוח ההופעות שלנו והזמינו כרטיסים לפני שייגמרו!",
+      loading: "טוען הופעות קרובות...",
+      noShows: "אין הופעות מתוכננות בקרוב.",
+      checkBack: "בדקו שוב בקרוב!",
+      getTickets: "הזמינו כרטיסים",
+      contactButton: "צרו קשר להזמנות",
+      viewAllButton: "צפו בכל ההופעות"
+    }
+  };
+
+  const t = translations[language];
 
   useEffect(() => {
     const fetchShows = async () => {
       try {
+        console.log("Fetching shows data...");
         // First try to get shows from Supabase
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
@@ -51,25 +79,35 @@ const ShowsSection = () => {
           .eq('is_published', true)
           .order('date', { ascending: true });
 
-        if (supabaseError) throw supabaseError;
+        if (supabaseError) {
+          console.error('Supabase error:', supabaseError);
+          throw supabaseError;
+        }
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
+          console.log("Using Supabase shows data:", supabaseData);
           setShows(supabaseData.slice(0, 4)); // Only show the first 4 shows in the homepage section
           setLoading(false);
           return;
         }
         
         // If no data in Supabase, try to fetch from Google Sheets
+        console.log("No Supabase data, trying Google Sheets...");
         const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
           'fetch-google-sheet'
         );
 
-        if (functionError) throw functionError;
+        if (functionError) {
+          console.error('Function error:', functionError);
+          throw functionError;
+        }
         
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+          console.log("Using Google Sheets data:", googleSheetsData.shows);
           setShows(googleSheetsData.shows.slice(0, 4)); // Only show the first 4 shows in the homepage section
         } else {
+          console.log("No shows data found in Google Sheets");
           // No shows found in either Supabase or Google Sheets
           setShows([]);
         }
@@ -95,7 +133,7 @@ const ShowsSection = () => {
       const date = parseDateString(dateString);
       
       if (date && !isNaN(date.getTime())) {
-        return new Intl.DateTimeFormat('en-US', {
+        return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'he-IL', {
           weekday: 'short',
           month: 'short', 
           day: 'numeric',
@@ -118,23 +156,23 @@ const ShowsSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-            UPCOMING <span className="text-band-purple">SHOWS</span>
+            {t.title}
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto mb-8"></div>
           <p className="text-white/70 max-w-2xl mx-auto">
-            Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!
+            {t.description}
           </p>
         </div>
         
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">Loading upcoming shows...</p>
+            <p className="mt-4 text-white/70">{t.loading}</p>
           </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-white/70">No upcoming shows scheduled at the moment.</p>
-            <p className="text-white/70 mt-2">Check back soon!</p>
+            <p className="text-white/70">{t.noShows}</p>
+            <p className="text-white/70 mt-2">{t.checkBack}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -157,7 +195,7 @@ const ShowsSection = () => {
                     asChild
                   >
                     <a href={show.ticket_link} target="_blank" rel="noopener noreferrer">
-                      GET TICKETS
+                      {t.getTickets}
                     </a>
                   </Button>
                 </CardContent>
@@ -174,7 +212,7 @@ const ShowsSection = () => {
             asChild
           >
             <a href="#contact">
-              CONTACT FOR BOOKINGS
+              {t.contactButton}
             </a>
           </Button>
           
@@ -185,7 +223,7 @@ const ShowsSection = () => {
             asChild
           >
             <Link to="/shows">
-              VIEW ALL SHOWS
+              {t.viewAllButton}
             </Link>
           </Button>
         </div>

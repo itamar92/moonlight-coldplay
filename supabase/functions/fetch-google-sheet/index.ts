@@ -104,7 +104,8 @@ serve(async (req) => {
         }
         return !isPrivate;
       })
-      .map((row) => ({
+      .map((row, index) => ({
+        id: `gs-${index}`, // Add an explicit ID for each show
         date: row[0] || "",         // Date
         venue: row[1] || "",        // Event Name
         location: row[3] || "",     // Location
@@ -120,7 +121,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("Error fetching Google Sheets data:", error);
+    console.error("Error fetching Google Sheets data:", error.message);
     return new Response(JSON.stringify({ 
       error: error.message, 
       success: false,
