@@ -26,20 +26,24 @@ const Navbar = () => {
   // Check authentication and admin status
   useEffect(() => {
     const checkSession = async () => {
-      // Get current session
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
+      try {
+        // Get current session
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
 
-      if (data.session) {
-        // Check if user is admin
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        setIsAdmin(!!profileData?.is_admin);
-        console.log("Admin status:", !!profileData?.is_admin, profileData);
+        if (data.session) {
+          // Check if user is admin
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          setIsAdmin(!!profileData?.is_admin);
+          console.log("Admin status:", !!profileData?.is_admin, profileData);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
     };
 

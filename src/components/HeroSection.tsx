@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from 'react-router-dom';
 import { Edit } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface HeroContent {
@@ -107,7 +106,6 @@ const HeroSection = () => {
           } else {
             console.log('Hero content not found in database, using defaults');
           }
-          setLoading(false);
           return;
         }
         
@@ -164,27 +162,17 @@ const HeroSection = () => {
     const checkAuth = async () => {
       try {
         // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          return;
-        }
+        const { data: { session } } = await supabase.auth.getSession();
         
         setSession(session);
         
         if (session) {
           // Check if user is admin
-          const { data: profileData, error: profileError } = await supabase
+          const { data: profileData } = await supabase
             .from('profiles')
             .select('is_admin')
             .eq('id', session.user.id)
             .single();
-            
-          if (profileError) {
-            console.error('Profile fetch error:', profileError);
-            return;
-          }
             
           setIsAdmin(!!profileData?.is_admin);
         }

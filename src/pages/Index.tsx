@@ -12,71 +12,66 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const { toast } = useToast();
 
-  // Only run once when the app initializes to ensure admin user exists
+  // Only run once when the app initializes to check if admin user exists
   useEffect(() => {
-    const createAdminUser = async () => {
+    const checkForAdminUser = async () => {
       try {
-        // Check if the admin user already exists by trying to sign in
-        const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
-          email: 'itamar92@gmail.com',
-          password: 'admin123456', // Use a longer password to meet requirements
-        });
+        // Check if session exists
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // If user exists and sign-in was successful, we're done
-        if (existingUser?.user) {
-          console.log('Admin user already exists and credentials are valid');
+        if (session) {
+          console.log('User is already logged in');
+          return;
+        }
+        
+        // Check if the admin user exists in profiles table
+        const { data: existingAdmins, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_admin', true)
+          .limit(1);
           
+        if (profileError) {
+          console.error('Error checking for admin users:', profileError);
+          return;
+        }
+        
+        if (existingAdmins && existingAdmins.length > 0) {
+          console.log('Admin user already exists in profiles');
+          return;
+        }
+        
+        // Only proceed with creating admin if no admin exists
+        console.log('No admin found in profiles, attempting to check if admin email exists');
+        
+        // Check if the email exists in auth
+        const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserByEmail('itamar92@gmail.com');
+        
+        if (user) {
+          console.log('Admin email exists, updating profile');
           // Ensure the user has admin privileges
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ is_admin: true })
-            .eq('id', existingUser.user.id);
+            .eq('id', user.id);
           
           if (updateError) {
             console.error('Error updating admin privileges:', updateError);
+          } else {
+            console.log('Admin privileges updated successfully');
           }
-          
           return;
         }
         
-        // If sign-in failed because the user doesn't exist, create the user
-        if (signInError) {
-          console.log('Creating admin user...');
-          // Try to create the admin user
-          const { data: newUser, error: signupError } = await supabase.auth.signUp({
-            email: 'itamar92@gmail.com',
-            password: 'admin123456', // Use a longer password to meet requirements
-          });
-          
-          if (signupError) {
-            console.error('Error creating admin user:', signupError);
-            return;
-          }
-          
-          // If user was created successfully, set them as admin in profiles table
-          if (newUser?.user) {
-            console.log('Admin user created:', newUser.user.id);
-            // Wait a moment for the user to be fully created
-            setTimeout(async () => {
-              const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ is_admin: true })
-                .eq('id', newUser.user.id);
-              
-              if (updateError) {
-                console.error('Error updating user profile:', updateError);
-              } else {
-                console.log('Admin user created successfully');
-              }
-            }, 1000);
-          }
-        }
+        // If we get here, there's no admin user at all, but we won't create one
+        // as that seems to be causing issues
+        console.log('No admin user found, but not creating one automatically');
       } catch (error) {
-        console.error('Error in admin user creation:', error);
+        console.error('Error in admin user check:', error);
       }
     };
     
-    createAdminUser();
+    checkForAdminUser();
   }, []);
 
   return (
