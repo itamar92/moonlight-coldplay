@@ -13,6 +13,7 @@ const Index = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [hasConnectionError, setHasConnectionError] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
   // Only run once when the app initializes to check connection and admin user
   useEffect(() => {
@@ -20,8 +21,9 @@ const Index = () => {
       try {
         setIsLoading(true);
         
-        // Check database connection with more retries and shorter delays
-        const isConnected = await checkSupabaseConnection(3, 500);
+        // Check database connection with more retries
+        const isConnected = await checkSupabaseConnection(4, 1000);
+        setConnectionAttempts(prev => prev + 1);
         
         if (!isConnected) {
           console.error('Failed to connect to the database after multiple attempts');
@@ -36,7 +38,6 @@ const Index = () => {
         }
         
         // Connection successful, proceed with checks
-        // Check if session exists
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -84,13 +85,28 @@ const Index = () => {
     };
     
     initialize();
-  }, [toast]);
+  }, [toast, connectionAttempts]);
+
+  // Try to reconnect periodically if there's a connection error
+  useEffect(() => {
+    let reconnectTimer: number | undefined;
+    
+    if (hasConnectionError && connectionAttempts < 3) {
+      reconnectTimer = window.setTimeout(() => {
+        setConnectionAttempts(prev => prev + 1);
+      }, 5000); // Try reconnecting every 5 seconds up to 3 total attempts
+    }
+    
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [hasConnectionError, connectionAttempts]);
 
   return (
     <div className="min-h-screen bg-band-dark text-white">
       {hasConnectionError && (
         <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
-          Connection to database failed. Default content is being displayed.
+          Database connection failed. Showing default content instead.
         </div>
       )}
       <Navbar />

@@ -18,62 +18,34 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     headers: {
       'Content-Type': 'application/json'
-    },
-    fetch: (input, init) => {
-      // Add a custom timeout for fetch requests (reduced from 8s to 4s for faster feedback)
-      const timeoutPromise = new Promise((_, reject) => {
-        const timeoutId = setTimeout(() => {
-          clearTimeout(timeoutId);
-          reject(new Error('Request timed out'));
-        }, 4000); // 4 second timeout
-      });
-
-      // Race between the fetch and the timeout
-      return Promise.race([
-        fetch(input, init),
-        timeoutPromise
-      ]).then(response => {
-        // Explicitly type the response as Response to fix the TypeScript error
-        const typedResponse = response as Response;
-        if (!typedResponse.ok) {
-          throw new Error(`HTTP error! status: ${typedResponse.status}`);
-        }
-        return typedResponse;
-      }).catch(error => {
-        console.error('Fetch error:', error);
-        throw error;
-      });
     }
   }
 });
 
 // Add a function to check connection status with retry
-export const checkSupabaseConnection = async (retries = 3, delay = 500) => {
+export const checkSupabaseConnection = async (retries = 3, delay = 1000) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       console.log(`Connection attempt ${attempt + 1}/${retries + 1}`);
       
-      // Use a more lightweight query for the connection check
-      // Remove the timeout() method that's causing the error
-      // Instead, wrap the query in a Promise.race with a timeout
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection check timed out')), 2000);
-      });
+      // Set a timeout for the entire connection check
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      const queryPromise = supabase
+      // Use a simple lightweight query for the connection check
+      const { data, error } = await supabase
         .from('profiles')
         .select('id')
-        .limit(1);
+        .limit(1)
+        .abortSignal(controller.signal);
+        
+      // Clear the timeout since the request completed
+      clearTimeout(timeoutId);
       
-      // Race between the query and the timeout
-      const { data, error } = await Promise.race([
-        queryPromise,
-        timeoutPromise.then(() => {
-          throw new Error('Connection check timed out');
-        })
-      ]);
-      
-      if (error) throw error;
+      if (error) {
+        console.error(`Error during connection check:`, error);
+        throw error;
+      }
       
       // If we've reached here, the connection was successful
       console.log('Connection successful:', data);
