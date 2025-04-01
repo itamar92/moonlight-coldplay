@@ -17,19 +17,75 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     fetch: function(input, init) {
-      return fetch(input, init);
+      // Add a custom timeout for fetch requests
+      const timeoutPromise = new Promise((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          clearTimeout(timeoutId);
+          reject(new Error('Request timed out'));
+        }, 8000); // 8 second timeout
+      });
+
+      // Race between the fetch and the timeout
+      return Promise.race([
+        fetch(input, init),
+        timeoutPromise
+      ]).then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response as Response;
+      }).catch(error => {
+        console.error('Fetch error:', error);
+        throw error;
+      });
     }
   }
 });
 
-// Add a function to check connection status
-export const checkSupabaseConnection = async () => {
+// Add a function to check connection status with retry
+export const checkSupabaseConnection = async (retries = 2, delay = 1000) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`Connection attempt ${attempt + 1}/${retries + 1}`);
+      
+      // Set a timeout for the entire connection check operation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection check timed out')), 5000);
+      });
+      
+      // Race between the actual check and timeout
+      const result = await Promise.race([
+        supabase.from('profiles').select('id').limit(1),
+        timeoutPromise
+      ]);
+      
+      // If we've reached here, the connection was successful
+      console.log('Connection successful:', result);
+      return true;
+    } catch (e) {
+      console.error(`Connection attempt ${attempt + 1} failed:`, e);
+      
+      // If we have retries left, wait before trying again
+      if (attempt < retries) {
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error('All connection attempts failed');
+        return false;
+      }
+    }
+  }
+  return false;
+};
+
+// Export a modified version of the supabase client with better error handling for queries
+export const safeQuery = async (queryFn: () => Promise<any>, defaultValue: any = null) => {
   try {
-    // A simple query to check if we can connect to Supabase
-    const { error } = await supabase.from('profiles').select('id').limit(1);
-    return !error;
-  } catch (e) {
-    console.error('Supabase connection check failed:', e);
-    return false;
+    const { data, error } = await queryFn();
+    if (error) throw error;
+    return data || defaultValue;
+  } catch (error) {
+    console.error('Supabase query error:', error);
+    return defaultValue;
   }
 };

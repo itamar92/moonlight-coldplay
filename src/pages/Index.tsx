@@ -6,7 +6,7 @@ import ShowsSection from '../components/ShowsSection';
 import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, checkSupabaseConnection } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -14,18 +14,33 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasConnectionError, setHasConnectionError] = useState(false);
 
-  // Only run once when the app initializes to check if admin user exists
+  // Only run once when the app initializes to check connection and admin user
   useEffect(() => {
-    const checkForAdminUser = async () => {
+    const initialize = async () => {
       try {
         setIsLoading(true);
         
-        // Check if session exists - fixed method call
+        // Check database connection with retries
+        const isConnected = await checkSupabaseConnection(2);
+        
+        if (!isConnected) {
+          console.error('Failed to connect to the database after multiple attempts');
+          setHasConnectionError(true);
+          toast({
+            variant: 'destructive',
+            title: 'Connection Error',
+            description: 'Failed to connect to the database. Some features may not work properly.'
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Connection successful, proceed with checks
+        // Check if session exists
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error checking session:', error);
-          setHasConnectionError(true);
           return;
         }
         
@@ -56,15 +71,20 @@ const Index = () => {
         // Only proceed with checking if no admin exists
         console.log('No admin found in profiles, but not creating one automatically');
       } catch (error) {
-        console.error('Error in admin user check:', error);
+        console.error('Error in initialization:', error);
         setHasConnectionError(true);
+        toast({
+          variant: 'destructive',
+          title: 'Initialization Error',
+          description: 'There was a problem initializing the application.'
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkForAdminUser();
-  }, []);
+    initialize();
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-band-dark text-white">
