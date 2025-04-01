@@ -16,8 +16,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true
   },
   global: {
-    fetch: (...args) => {
-      return fetch(...args);
+    fetch: function(input, init) {
+      return fetch(input, init);
     }
   }
 });
