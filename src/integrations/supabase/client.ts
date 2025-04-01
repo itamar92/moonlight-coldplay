@@ -54,11 +54,24 @@ export const checkSupabaseConnection = async (retries = 3, delay = 500) => {
       console.log(`Connection attempt ${attempt + 1}/${retries + 1}`);
       
       // Use a more lightweight query for the connection check
-      const { data, error } = await supabase
+      // Remove the timeout() method that's causing the error
+      // Instead, wrap the query in a Promise.race with a timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection check timed out')), 2000);
+      });
+      
+      const queryPromise = supabase
         .from('profiles')
         .select('id')
-        .limit(1)
-        .timeout(2000); // Add explicit timeout for the query
+        .limit(1);
+      
+      // Race between the query and the timeout
+      const { data, error } = await Promise.race([
+        queryPromise,
+        timeoutPromise.then(() => {
+          throw new Error('Connection check timed out');
+        })
+      ]);
       
       if (error) throw error;
       
