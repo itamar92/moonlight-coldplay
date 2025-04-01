@@ -30,10 +30,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         fetch(input, init),
         timeoutPromise
       ]).then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        // Explicitly type the response as Response to fix the TypeScript error
+        const typedResponse = response as Response;
+        if (!typedResponse.ok) {
+          throw new Error(`HTTP error! status: ${typedResponse.status}`);
         }
-        return response as Response;
+        return typedResponse;
       }).catch(error => {
         console.error('Fetch error:', error);
         throw error;
