@@ -20,8 +20,8 @@ const Index = () => {
       try {
         setIsLoading(true);
         
-        // Check database connection with retries
-        const isConnected = await checkSupabaseConnection(2);
+        // Check database connection with more retries and shorter delays
+        const isConnected = await checkSupabaseConnection(3, 500);
         
         if (!isConnected) {
           console.error('Failed to connect to the database after multiple attempts');
@@ -29,7 +29,7 @@ const Index = () => {
           toast({
             variant: 'destructive',
             title: 'Connection Error',
-            description: 'Failed to connect to the database. Some features may not work properly.'
+            description: 'Failed to connect to the database. Default content is being displayed.'
           });
           setIsLoading(false);
           return;
@@ -90,7 +90,7 @@ const Index = () => {
     <div className="min-h-screen bg-band-dark text-white">
       {hasConnectionError && (
         <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
-          Connection to database failed. Some features may not work properly.
+          Connection to database failed. Default content is being displayed.
         </div>
       )}
       <Navbar />

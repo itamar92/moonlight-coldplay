@@ -16,13 +16,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true
   },
   global: {
-    fetch: function(input, init) {
-      // Add a custom timeout for fetch requests
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    fetch: (input, init) => {
+      // Add a custom timeout for fetch requests (reduced from 8s to 4s for faster feedback)
       const timeoutPromise = new Promise((_, reject) => {
         const timeoutId = setTimeout(() => {
           clearTimeout(timeoutId);
           reject(new Error('Request timed out'));
-        }, 8000); // 8 second timeout
+        }, 4000); // 4 second timeout
       });
 
       // Race between the fetch and the timeout
@@ -45,24 +48,22 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 });
 
 // Add a function to check connection status with retry
-export const checkSupabaseConnection = async (retries = 2, delay = 1000) => {
+export const checkSupabaseConnection = async (retries = 3, delay = 500) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       console.log(`Connection attempt ${attempt + 1}/${retries + 1}`);
       
-      // Set a timeout for the entire connection check operation
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection check timed out')), 5000);
-      });
+      // Use a more lightweight query for the connection check
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .timeout(2000); // Add explicit timeout for the query
       
-      // Race between the actual check and timeout
-      const result = await Promise.race([
-        supabase.from('profiles').select('id').limit(1),
-        timeoutPromise
-      ]);
+      if (error) throw error;
       
       // If we've reached here, the connection was successful
-      console.log('Connection successful:', result);
+      console.log('Connection successful:', data);
       return true;
     } catch (e) {
       console.error(`Connection attempt ${attempt + 1} failed:`, e);
