@@ -6,7 +6,6 @@ import { Calendar, MapPin, ArrowLeft } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface Show {
   id: string;
@@ -14,7 +13,6 @@ interface Show {
   venue: string;
   location: string;
   ticket_link: string;
-  image_url?: string;
 }
 
 // Parse a date string in dd/MM/yyyy format to a Date object
@@ -42,7 +40,6 @@ const AllShows = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { language } = useLanguage();
 
   useEffect(() => {
     const fetchShows = async () => {
@@ -80,10 +77,8 @@ const AllShows = () => {
         console.error('Error fetching shows:', error);
         toast({
           variant: 'destructive',
-          title: language === 'en' ? 'Error fetching shows' : 'שגיאה בטעינת הופעות',
-          description: language === 'en'
-            ? "Couldn't load upcoming shows. Please try again later."
-            : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
+          title: 'Error fetching shows',
+          description: "Couldn't load upcoming shows. Please try again later.",
         });
       } finally {
         setLoading(false);
@@ -91,7 +86,7 @@ const AllShows = () => {
     };
 
     fetchShows();
-  }, [language]);
+  }, []);
 
   // Format the date for display
   const formatDate = (dateString: string) => {
@@ -100,7 +95,7 @@ const AllShows = () => {
       const date = parseDateString(dateString);
       
       if (date && !isNaN(date.getTime())) {
-        return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'he-IL', {
+        return new Intl.DateTimeFormat('en-US', {
           weekday: 'short',
           month: 'short', 
           day: 'numeric',
@@ -113,15 +108,6 @@ const AllShows = () => {
     }
   };
 
-  // Translations
-  const texts = {
-    allShows: language === 'en' ? 'ALL SHOWS' : 'כל ההופעות',
-    loading: language === 'en' ? 'Loading shows...' : 'טוען הופעות...',
-    noShows: language === 'en' ? 'No shows scheduled at the moment.' : 'אין הופעות מתוכננות כרגע.',
-    checkBack: language === 'en' ? 'Check back soon!' : 'בדקו שוב בקרוב!',
-    getTickets: language === 'en' ? 'GET TICKETS' : 'לרכישת כרטיסים',
-  };
-
   return (
     <div className="min-h-screen bg-band-dark text-white">
       <div className="container mx-auto px-4 py-24">
@@ -132,11 +118,7 @@ const AllShows = () => {
             </Button>
           </Link>
           <h1 className="text-3xl md:text-4xl font-bold text-white text-glow">
-            {language === 'en' ? (
-              <>ALL <span className="text-band-purple">SHOWS</span></>
-            ) : (
-              <>כל <span className="text-band-purple">ההופעות</span></>
-            )}
+            ALL <span className="text-band-purple">SHOWS</span>
           </h1>
         </div>
         
@@ -145,26 +127,17 @@ const AllShows = () => {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">{texts.loading}</p>
+            <p className="mt-4 text-white/70">Loading shows...</p>
           </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-white/70">{texts.noShows}</p>
-            <p className="text-white/70 mt-2">{texts.checkBack}</p>
+            <p className="text-white/70">No shows scheduled at the moment.</p>
+            <p className="text-white/70 mt-2">Check back soon!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {shows.map((show, index) => (
               <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
-                {show.image_url && (
-                  <div className="h-48 w-full overflow-hidden">
-                    <img 
-                      src={show.image_url} 
-                      alt={show.venue} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                )}
                 <CardContent className="p-6">
                   <div className="flex items-center mb-4 text-band-purple">
                     <Calendar size={18} className="mr-2" />
@@ -182,7 +155,7 @@ const AllShows = () => {
                     asChild
                   >
                     <a href={show.ticket_link} target="_blank" rel="noopener noreferrer">
-                      {texts.getTickets}
+                      GET TICKETS
                     </a>
                   </Button>
                 </CardContent>

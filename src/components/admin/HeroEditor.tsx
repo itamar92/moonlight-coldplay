@@ -109,7 +109,6 @@ const HeroEditor = () => {
           } else {
             console.log('No existing hero content found, using defaults');
           }
-          setLoading(false);
           return;
         }
         

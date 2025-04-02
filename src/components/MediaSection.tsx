@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface MediaItem {
   id: string;
@@ -19,7 +18,6 @@ const MediaSection = () => {
   const [photos, setPhotos] = useState<MediaItem[]>([]);
   const [videos, setVideos] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { language } = useLanguage();
 
   useEffect(() => {
     const fetchMedia = async () => {
@@ -96,12 +94,6 @@ const MediaSection = () => {
 
   const displayPhotos = photos.length > 0 ? photos : defaultPhotos;
   const displayVideos = videos.length > 0 ? videos : defaultVideos;
-  const texts = {
-    mediaText: language === 'en' ? 'MEDIA' : ' גלריית',
-    mediaText2: language === 'en' ? 'GALLERY' : 'תמונות',
-    paragraphText: language === 'en' ? 'Relive the magic of our performances through our collection of photos and videos.' : 'תמונות מהופעות חיות'
-
-  };
 
   return (
     <section id="media" className="py-20 bg-black relative overflow-hidden">
@@ -112,11 +104,11 @@ const MediaSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-          {texts.mediaText} <span className="text-band-blue">{texts.mediaText2}</span>
+            MEDIA <span className="text-band-blue">GALLERY</span>
           </h2>
           <div className="h-1 w-20 bg-band-blue mx-auto mb-8"></div>
           <p className="text-white/70 max-w-2xl mx-auto">
-            {texts.paragraphText}
+            Relive the magic of our performances through our collection of photos and videos.
           </p>
         </div>
         

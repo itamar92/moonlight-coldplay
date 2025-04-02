@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,9 +20,7 @@ const ContentEditor = () => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        // Fixed method call
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
           setIsAdmin(false);

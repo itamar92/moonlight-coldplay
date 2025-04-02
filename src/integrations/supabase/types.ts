@@ -101,7 +101,6 @@ export type Database = {
           created_at: string | null
           date: string
           id: string
-          image_url: string | null
           is_published: boolean | null
           location: string
           ticket_link: string
@@ -112,7 +111,6 @@ export type Database = {
           created_at?: string | null
           date: string
           id?: string
-          image_url?: string | null
           is_published?: boolean | null
           location: string
           ticket_link: string
@@ -123,7 +121,6 @@ export type Database = {
           created_at?: string | null
           date?: string
           id?: string
-          image_url?: string | null
           is_published?: boolean | null
           location?: string
           ticket_link?: string

@@ -46,9 +46,8 @@ serve(async (req) => {
     }
 
     // Specify the sheet name and range (starting from row 2 to skip headers)
-    // Updated range to include column G for image URLs
     const SHEET_NAME = "Coldplay"; 
-    const RANGE = `${SHEET_NAME}!A2:G`;
+    const RANGE = `${SHEET_NAME}!A2:F`;
     
     console.log(`Fetching data from sheet: ${SHEET_NAME}, range: ${RANGE}`);
     
@@ -101,11 +100,10 @@ serve(async (req) => {
         return !isPrivate;
       })
       .map((row) => ({
-        date: row[0] || "",              // Date
-        venue: row[1] || "",             // Event Name
-        location: row[3] || "",          // Location
-        ticket_link: row[4] || "#",      // Links for tickets
-        image_url: row[6] || "",         // Image URL (new column G)
+        date: row[0] || "",         // Date
+        venue: row[1] || "",        // Event Name
+        location: row[3] || "",     // Location
+        ticket_link: row[4] || "#", // Links for tickets
         is_published: true
       }));
 
