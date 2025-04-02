@@ -84,7 +84,7 @@ export const useHeroData = (language: string) => {
         setLoading(true);
         console.log('Fetching hero content...');
         
-        // Add a timeout to prevent getting stuck loading
+        // Add a timeout to prevent getting stuck loadings
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Database request timeout')), 100000)
         );
