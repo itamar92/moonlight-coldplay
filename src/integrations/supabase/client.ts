@@ -23,14 +23,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 });
 
 // Add a function to check connection status with retry
-export const checkSupabaseConnection = async (retries = 3, delay = 1000) => {
+export const checkSupabaseConnection = async (retries = 3, delay = 10000) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       console.log(`Connection attempt ${attempt + 1}/${retries + 1}`);
       
       // Set a timeout for the entire connection check
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       
       // Use a simple lightweight query for the connection check
       const { data, error } = await supabase
