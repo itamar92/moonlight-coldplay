@@ -6,7 +6,7 @@ import ShowsSection from '../components/ShowsSection';
 import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import { supabase, checkSupabaseConnection } from '@/integrations/supabase/client';
+import { supabase, checkSupabaseConnection, testBasicConnection } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -21,7 +21,24 @@ const Index = () => {
       try {
         setIsLoading(true);
         
-        // Check database connection with more retries
+        // Test basic connection first
+        console.log('Testing basic Supabase connection...');
+        const basicConnectionTest = await testBasicConnection();
+        console.log('Basic connection test result:', basicConnectionTest);
+        
+        if (!basicConnectionTest) {
+          console.error('Basic connection test failed');
+          setHasConnectionError(true);
+          toast({
+            variant: 'destructive',
+            title: 'Connection Error',
+            description: 'Failed to connect to the database. Default content is being displayed.'
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Then proceed with the regular connection check
         const isConnected = await checkSupabaseConnection(4, 1000);
         setConnectionAttempts(prev => prev + 1);
         
