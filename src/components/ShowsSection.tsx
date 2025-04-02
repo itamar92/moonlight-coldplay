@@ -6,6 +6,7 @@ import { Calendar, MapPin } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Show {
   id: string;
@@ -13,6 +14,7 @@ interface Show {
   venue: string;
   location: string;
   ticket_link: string;
+  image_url?: string;
 }
 
 // Parse a date string in dd/MM/yyyy format to a Date object
@@ -40,6 +42,7 @@ const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { language } = useLanguage();
 
   useEffect(() => {
     const fetchShows = async () => {
@@ -95,7 +98,7 @@ const ShowsSection = () => {
       const date = parseDateString(dateString);
       
       if (date && !isNaN(date.getTime())) {
-        return new Intl.DateTimeFormat('en-US', {
+        return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'he-IL', {
           weekday: 'short',
           month: 'short', 
           day: 'numeric',
@@ -108,6 +111,20 @@ const ShowsSection = () => {
     }
   };
 
+  // Translations
+  const texts = {
+    upcomingShows: language === 'en' ? 'UPCOMING SHOWS' : 'הופעות קרובות',
+    description: language === 'en' 
+      ? "Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!"
+      : "אל תחמיצו את ההזדמנות לחוות את הקסם של המוזיקה של Moonlight בהופעה חיה. בדקו את לוח ההופעות שלנו והשיגו כרטיסים לפני שייגמרו!",
+    loading: language === 'en' ? 'Loading upcoming shows...' : 'טוען הופעות קרובות...',
+    noShows: language === 'en' ? 'No upcoming shows scheduled at the moment.' : 'אין הופעות קרובות מתוכננות כרגע.',
+    checkBack: language === 'en' ? 'Check back soon!' : 'בדקו שוב בקרוב!',
+    getTickets: language === 'en' ? 'GET TICKETS' : 'לרכישת כרטיסים',
+    contactBookings: language === 'en' ? 'CONTACT FOR BOOKINGS' : 'צרו קשר להזמנות',
+    viewAllShows: language === 'en' ? 'VIEW ALL SHOWS' : 'צפו בכל ההופעות'
+  };
+
   return (
     <section id="shows" className="py-20 bg-gradient-to-b from-band-dark to-black relative overflow-hidden">
       {/* Decorative elements */}
@@ -118,28 +135,37 @@ const ShowsSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-            UPCOMING <span className="text-band-purple">SHOWS</span>
+            {texts.upcomingShows.split(' ')[0]} <span className="text-band-purple">{texts.upcomingShows.split(' ')[1]}</span>
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto mb-8"></div>
           <p className="text-white/70 max-w-2xl mx-auto">
-            Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!
+            {texts.description}
           </p>
         </div>
         
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">Loading upcoming shows...</p>
+            <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-white/70">No upcoming shows scheduled at the moment.</p>
-            <p className="text-white/70 mt-2">Check back soon!</p>
+            <p className="text-white/70">{texts.noShows}</p>
+            <p className="text-white/70 mt-2">{texts.checkBack}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {shows.map((show, index) => (
               <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
+                {show.image_url && (
+                  <div className="h-48 w-full overflow-hidden">
+                    <img 
+                      src={show.image_url} 
+                      alt={show.venue} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                )}
                 <CardContent className="p-6">
                   <div className="flex items-center mb-4 text-band-purple">
                     <Calendar size={18} className="mr-2" />
@@ -157,7 +183,7 @@ const ShowsSection = () => {
                     asChild
                   >
                     <a href={show.ticket_link} target="_blank" rel="noopener noreferrer">
-                      GET TICKETS
+                      {texts.getTickets}
                     </a>
                   </Button>
                 </CardContent>
@@ -174,7 +200,7 @@ const ShowsSection = () => {
             asChild
           >
             <a href="#contact">
-              CONTACT FOR BOOKINGS
+              {texts.contactBookings}
             </a>
           </Button>
           
@@ -185,7 +211,7 @@ const ShowsSection = () => {
             asChild
           >
             <Link to="/shows">
-              VIEW ALL SHOWS
+              {texts.viewAllShows}
             </Link>
           </Button>
         </div>

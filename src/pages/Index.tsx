@@ -1,48 +1,114 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ShowsSection from '../components/ShowsSection';
 import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, checkSupabaseConnection } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasConnectionError, setHasConnectionError] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
-  // Only check if admin exists, don't try to create one automatically
+  // Only run once when the app initializes to check connection and admin user
   useEffect(() => {
-    const checkAdminUser = async () => {
+    const initialize = async () => {
       try {
-        // Check if there are any admin users in the profiles table
-        const { data: adminUsers, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('is_admin', true)
-          .limit(1);
+        setIsLoading(true);
         
-        if (error) {
-          console.error('Error checking for admin users:', error);
+        // Check database connection with more retries
+        const isConnected = await checkSupabaseConnection(4, 1000);
+        setConnectionAttempts(prev => prev + 1);
+        
+        if (!isConnected) {
+          console.error('Failed to connect to the database after multiple attempts');
+          setHasConnectionError(true);
+          toast({
+            variant: 'destructive',
+            title: 'Connection Error',
+            description: 'Failed to connect to the database. Default content is being displayed.'
+          });
+          setIsLoading(false);
           return;
         }
         
-        if (adminUsers && adminUsers.length > 0) {
-          console.log('Admin user already exists');
-        } else {
-          console.log('No admin users found. You can create one through the authentication page.');
+        // Connection successful, proceed with checks
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking session:', error);
+          return;
         }
+        
+        const session = data.session;
+        
+        if (session) {
+          console.log('User is already logged in');
+          return;
+        }
+        
+        // Check if the admin user exists in profiles table
+        const { data: existingAdmins, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_admin', true)
+          .limit(1);
+          
+        if (profileError) {
+          console.error('Error checking for admin users:', profileError);
+          return;
+        }
+        
+        if (existingAdmins && existingAdmins.length > 0) {
+          console.log('Admin user already exists in profiles');
+          return;
+        }
+        
+        // Only proceed with checking if no admin exists
+        console.log('No admin found in profiles, but not creating one automatically');
       } catch (error) {
-        console.error('Error in admin user check:', error);
+        console.error('Error in initialization:', error);
+        setHasConnectionError(true);
+        toast({
+          variant: 'destructive',
+          title: 'Initialization Error',
+          description: 'There was a problem initializing the application.'
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    checkAdminUser();
-  }, []);
+    initialize();
+  }, [toast, connectionAttempts]);
+
+  // Try to reconnect periodically if there's a connection error
+  useEffect(() => {
+    let reconnectTimer: number | undefined;
+    
+    if (hasConnectionError && connectionAttempts < 3) {
+      reconnectTimer = window.setTimeout(() => {
+        setConnectionAttempts(prev => prev + 1);
+      }, 5000); // Try reconnecting every 5 seconds up to 3 total attempts
+    }
+    
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [hasConnectionError, connectionAttempts]);
 
   return (
     <div className="min-h-screen bg-band-dark text-white">
+      {hasConnectionError && (
+        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
+          Database connection failed. Showing default content instead.
+        </div>
+      )}
       <Navbar />
       <HeroSection />
       <ShowsSection />

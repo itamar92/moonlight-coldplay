@@ -26,20 +26,24 @@ const Navbar = () => {
   // Check authentication and admin status
   useEffect(() => {
     const checkSession = async () => {
-      // Get current session
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
+      try {
+        // Get current session - fixed method call
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
 
-      if (data.session) {
-        // Check if user is admin
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        setIsAdmin(!!profileData?.is_admin);
-        console.log("Admin status:", !!profileData?.is_admin, profileData);
+        if (data.session) {
+          // Check if user is admin
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          setIsAdmin(!!profileData?.is_admin);
+          console.log("Admin status:", !!profileData?.is_admin, profileData);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
     };
 
@@ -101,7 +105,7 @@ const Navbar = () => {
   };
 
   // Define spacing class based on language
-  const menuSpacing = language === 'he' ? 'space-x-10' : 'space-x-8';
+  const menuSpacing = language === 'he' ? 'space-x-4 md:space-x-6' : 'space-x-4 md:space-x-8';
 
   return (
     <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">

@@ -17,7 +17,7 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in - fixed method call
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);

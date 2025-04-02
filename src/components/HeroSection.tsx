@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from 'react-router-dom';
 import { Edit } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface HeroContent {
@@ -83,30 +82,55 @@ const HeroSection = () => {
   const [session, setSession] = useState<any>(null);
   const { language } = useLanguage();
   const { toast } = useToast();
-
+  const [connectionError, setConnectionError] = useState(false);
+  
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setLoading(true);
         console.log('Fetching hero content...');
         
-        const { data, error } = await supabase
+        // Add a timeout to prevent getting stuck loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database request timeout')), 10000)
+        );
+        
+        const fetchPromise = supabase
           .from('content')
           .select('*')
           .eq('section', 'hero')
           .single();
         
+        // Race between fetch and timeout
+        const { data, error } = await Promise.race([
+          fetchPromise,
+          timeoutPromise.then(() => {
+            throw new Error('Database request timed out');
+          })
+        ]);
+        
         if (error) {
+          console.error('Error fetching hero content:', error);
+          
           if (error.code !== 'PGRST116') { // Not found error
-            console.error('Error fetching hero content:', error);
             toast({
               variant: 'destructive',
               title: 'Error loading content',
               description: 'There was a problem loading the hero content.'
             });
+            
+            // Set connection error if this is a network-related error
+            if (error.message && (
+                error.message.includes('fetch') || 
+                error.message.includes('network') ||
+                error.message.includes('timeout')
+            )) {
+              setConnectionError(true);
+            }
           } else {
             console.log('Hero content not found in database, using defaults');
           }
+          
           setLoading(false);
           return;
         }
@@ -148,6 +172,16 @@ const HeroSection = () => {
         }
       } catch (error) {
         console.error('Error in hero content fetch:', error);
+        
+        // Show connection error message for network-related issues
+        if (error instanceof Error && (
+            error.message.includes('fetch') || 
+            error.message.includes('network') ||
+            error.message.includes('timeout')
+        )) {
+          setConnectionError(true);
+        }
+        
         toast({
           variant: 'destructive',
           title: 'Error loading content',
@@ -163,14 +197,15 @@ const HeroSection = () => {
     // Check for session and admin status
     const checkAuth = async () => {
       try {
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Get current session - fixed method call
+        const { data, error } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        if (error) {
+          console.error('Error getting session:', error);
           return;
         }
         
+        const session = data.session;
         setSession(session);
         
         if (session) {
@@ -182,11 +217,10 @@ const HeroSection = () => {
             .single();
             
           if (profileError) {
-            console.error('Profile fetch error:', profileError);
-            return;
+            console.error('Error checking admin status:', profileError);
+          } else {
+            setIsAdmin(!!profileData?.is_admin);
           }
-            
-          setIsAdmin(!!profileData?.is_admin);
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -197,14 +231,14 @@ const HeroSection = () => {
     
     // Listen for authentication changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
+      async (event, newSession) => {
+        setSession(newSession);
         
-        if (session) {
+        if (newSession) {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('is_admin')
-            .eq('id', session.user.id)
+            .eq('id', newSession.user.id)
             .single();
             
           setIsAdmin(!!profileData?.is_admin);
@@ -224,6 +258,13 @@ const HeroSection = () => {
 
   return (
     <section id="home" className="relative min-h-screen flex flex-col items-center justify-center pt-16 overflow-hidden">
+      {/* Connection Error Message */}
+      {connectionError && (
+        <div className="absolute top-16 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
+          Connection to database failed. Default content is being displayed.
+        </div>
+      )}
+      
       {/* Admin Edit Button */}
       {isAdmin && (
         <div className="absolute top-20 right-4 z-20">

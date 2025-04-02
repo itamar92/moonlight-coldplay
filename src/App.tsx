@@ -12,6 +12,7 @@ import ContentEditor from "./pages/ContentEditor";
 import NotFound from "./pages/NotFound";
 import AllShows from "./pages/AllShows";
 
+// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 const App = () => (
