@@ -9,20 +9,18 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-//   auth: {
-//     persistSession: true,
-//     autoRefreshToken: true,
-//     detectSessionInUrl: true
-//   },
-//   global: {
-//     headers: {
-//       'Content-Type': 'application/json'
-//     }
-//   }
-// });
-
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+});
 
 // Add a function to check connection status with retry
 export const checkSupabaseConnection = async (retries = 3, delay = 1000) => {
