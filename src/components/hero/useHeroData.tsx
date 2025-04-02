@@ -84,45 +84,49 @@ export const useHeroData = (language: string) => {
         setLoading(true);
         console.log('Fetching hero content...');
         
-        // Add a timeout to prevent getting stuck loadings
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database request timeout')), 100000)
-        );
+        // Simple debug logging
+        console.log('Checking content table existence...');
+        const { data: tableCheck, error: tableError } = await supabase
+          .from('content')
+          .select('count')
+          .limit(1);
+          
+        if (tableError) {
+          console.error('Error checking content table:', tableError);
+          // Table might not exist
+          setConnectionError(true);
+          toast({
+            variant: 'destructive',
+            title: 'Table error',
+            description: 'The content table may not exist.'
+          });
+          setLoading(false);
+          return;
+        }
         
-        const fetchPromise = supabase
+        console.log('Content table exists, records count:', tableCheck);
+        
+        // Now fetch the specific hero content
+        console.log('Fetching hero section content...');
+        const { data, error } = await supabase
           .from('content')
           .select('*')
           .eq('section', 'hero')
           .single();
-        
-        // Race between fetch and timeout
-        const { data, error } = await Promise.race([
-          fetchPromise,
-          timeoutPromise.then(() => {
-            throw new Error('Database request timed out');
-          })
-        ]);
+          
+        console.log('Hero fetch completed:', { data, error });
         
         if (error) {
           console.error('Error fetching hero content:', error);
           
-          if (error.code !== 'PGRST116') { // Not found error
+          if (error.code === 'PGRST116') { // Not found error
+            console.log('Hero content not found in database, using defaults');
+          } else {
             toast({
               variant: 'destructive',
               title: 'Error loading content',
               description: 'There was a problem loading the hero content.'
             });
-            
-            // Set connection error if this is a network-related error
-            if (error.message && (
-                error.message.includes('fetch') || 
-                error.message.includes('network') ||
-                error.message.includes('timeout')
-            )) {
-              setConnectionError(true);
-            }
-          } else {
-            console.log('Hero content not found in database, using defaults');
           }
           
           setLoading(false);
