@@ -36,8 +36,8 @@ const defaultContent: MultilingualHeroContent = {
     logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
   },
   he: {
-    title: 'מונלייט',
-    subtitle: 'להקת מחווה לקולדפליי',
+    title: 'MOONLIGHT',
+    subtitle: 'להקת המחווה לקולדפליי',
     description: 'חווה את הקסם של המוזיקה האיקונית של קולדפליי בהופעה חיה עם תשוקה ודיוק. הצטרף אלינו למסע מוזיקלי בין הכוכבים.',
     button1_text: 'הופעות קרובות',
     button1_link: '#shows',
