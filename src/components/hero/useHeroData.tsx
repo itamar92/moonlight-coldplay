@@ -86,7 +86,7 @@ export const useHeroData = (language: string) => {
         
         // Add a timeout to prevent getting stuck loading
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database request timeout')), 10000)
+          setTimeout(() => reject(new Error('Database request timeout')), 100000)
         );
         
         const fetchPromise = supabase
