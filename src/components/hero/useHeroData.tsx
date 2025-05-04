@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +40,23 @@ const defaultContent: MultilingualHeroContent = {
     button2_link: '#',
     logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
   }
+};
+
+// Helper function to validate if an object is a valid HeroContent
+const isValidHeroContent = (obj: any): obj is HeroContent => {
+  return (
+    typeof obj === 'object' && 
+    obj !== null && 
+    !Array.isArray(obj) &&
+    typeof obj.title === 'string' &&
+    typeof obj.subtitle === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.button1_text === 'string' &&
+    typeof obj.button1_link === 'string' &&
+    typeof obj.button2_text === 'string' &&
+    typeof obj.button2_link === 'string' &&
+    typeof obj.logo_url === 'string'
+  );
 };
 
 export const useHeroData = (language: string) => {
@@ -105,13 +121,22 @@ export const useHeroData = (language: string) => {
             'en' in contentData && 
             'he' in contentData
           ) {
-            // Create a properly typed object to satisfy TypeScript
-            const typedContent: MultilingualHeroContent = {
-              en: contentData.en as HeroContent,
-              he: contentData.he as HeroContent
-            };
+            // Validate both language objects
+            const enContent = contentData.en;
+            const heContent = contentData.he;
             
-            setContent(typedContent);
+            if (isValidHeroContent(enContent) && isValidHeroContent(heContent)) {
+              // Create a properly typed object to satisfy TypeScript
+              const typedContent: MultilingualHeroContent = {
+                en: enContent,
+                he: heContent
+              };
+              
+              setContent(typedContent);
+            } else {
+              console.error('Hero content language objects are invalid:', contentData);
+              // Keep using default content
+            }
           } else {
             console.error('Hero content does not match expected format:', contentData);
             // Keep using default content
