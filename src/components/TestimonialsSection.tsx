@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
@@ -37,12 +36,20 @@ const TestimonialsSection = () => {
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
+        setLoading(true);
+        console.log('Fetching testimonials data...');
+        
         const { data, error } = await supabase
           .from('testimonials')
           .select('*')
           .order('order', { ascending: true });
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching testimonials:', error);
+          throw error;
+        }
+        
+        console.log('Testimonials data received:', data);
         
         if (data && data.length > 0) {
           // Transform database testimonials to match our Testimonial interface
@@ -58,6 +65,7 @@ const TestimonialsSection = () => {
           
           setTestimonials(mappedTestimonials);
         } else {
+          console.log('No testimonials found in database, using fallback data');
           // Fallback to sample testimonials if none in database
           setTestimonials([
             {
@@ -107,7 +115,7 @@ const TestimonialsSection = () => {
     };
 
     fetchTestimonials();
-  }, [language]);
+  }, [language, toast]);
 
   // Translations
   const texts = {

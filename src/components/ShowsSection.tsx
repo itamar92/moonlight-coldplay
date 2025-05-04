@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +46,9 @@ const ShowsSection = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
+        setLoading(true);
+        console.log('Fetching shows data...');
+        
         // First try to get shows from Supabase
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
@@ -54,26 +56,19 @@ const ShowsSection = () => {
           .eq('is_published', true)
           .order('date', { ascending: true });
 
-        if (supabaseError) throw supabaseError;
+        if (supabaseError) {
+          console.error('Error fetching shows:', supabaseError);
+          throw supabaseError;
+        }
+        
+        console.log('Shows data received:', supabaseData);
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
           setShows(supabaseData.slice(0, 4)); // Only show the first 4 shows in the homepage section
-          setLoading(false);
-          return;
-        }
-        
-        // If no data in Supabase, try to fetch from Google Sheets
-        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
-          'fetch-google-sheet'
-        );
-
-        if (functionError) throw functionError;
-        
-        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-          setShows(googleSheetsData.shows.slice(0, 4)); // Only show the first 4 shows in the homepage section
         } else {
-          // No shows found in either Supabase or Google Sheets
+          console.log('No shows found in database');
+          // No shows found
           setShows([]);
         }
       } catch (error: any) {
@@ -83,13 +78,14 @@ const ShowsSection = () => {
           title: 'Error fetching shows',
           description: "Couldn't load upcoming shows. Please try again later.",
         });
+        setShows([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchShows();
-  }, []);
+  }, [toast]);
 
   // Format the date for display
   const formatDate = (dateString: string) => {

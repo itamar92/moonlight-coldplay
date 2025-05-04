@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
@@ -24,6 +25,9 @@ const MediaSection = () => {
   useEffect(() => {
     const fetchMedia = async () => {
       try {
+        setLoading(true);
+        console.log('Fetching media data...');
+        
         const { data, error } = await supabase
           .from('media')
           .select('*')
@@ -33,6 +37,8 @@ const MediaSection = () => {
           console.error('Error fetching media:', error);
           return;
         }
+        
+        console.log('Media data received:', data);
         
         // Filter media into photos and videos with proper type casting
         const photosData = data?.filter(item => item.type === 'photo').map(item => ({
@@ -44,6 +50,9 @@ const MediaSection = () => {
           ...item,
           type: 'video' as const
         })) || [];
+        
+        console.log('Photos data:', photosData);
+        console.log('Videos data:', videosData);
         
         setPhotos(photosData);
         setVideos(videosData);
