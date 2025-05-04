@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Json } from '@/integrations/supabase/types';
 
 interface HeroContent {
   title: string;
@@ -103,8 +105,13 @@ export const useHeroData = (language: string) => {
             'en' in contentData && 
             'he' in contentData
           ) {
-            // Cast to the expected type after validation
-            setContent(contentData as MultilingualHeroContent);
+            // Create a properly typed object to satisfy TypeScript
+            const typedContent: MultilingualHeroContent = {
+              en: contentData.en as HeroContent,
+              he: contentData.he as HeroContent
+            };
+            
+            setContent(typedContent);
           } else {
             console.error('Hero content does not match expected format:', contentData);
             // Keep using default content
