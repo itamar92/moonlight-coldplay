@@ -43,11 +43,84 @@ const defaultContent: MultilingualHeroContent = {
 
 export const useHeroData = (language: string) => {
   const [content, setContent] = useState<MultilingualHeroContent>(defaultContent);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [session, setSession] = useState<any>(null);
   const { toast } = useToast();
   const [connectionError, setConnectionError] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error checking session:', error);
+          return;
+        }
+        setSession(data.session);
+        
+        // If session exists, check if user is admin
+        if (data.session) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (!profileError && profileData) {
+            setIsAdmin(profileData.is_admin === true);
+          }
+        }
+      } catch (error) {
+        console.error('Error in session check:', error);
+      }
+    };
+
+    const fetchHeroContent = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('content')
+          .select('content')
+          .eq('section', 'hero')
+          .single();
+          
+        if (error) {
+          console.error('Error fetching hero content:', error);
+          setConnectionError(true);
+          return;
+        }
+        
+        if (data && data.content) {
+          // Fix: Add type checking and validation before setting the content
+          const contentData = data.content;
+          
+          // Validate that the content has the expected structure
+          if (
+            typeof contentData === 'object' && 
+            contentData !== null && 
+            !Array.isArray(contentData) &&
+            'en' in contentData && 
+            'he' in contentData
+          ) {
+            // Cast to the expected type after validation
+            setContent(contentData as MultilingualHeroContent);
+          } else {
+            console.error('Hero content does not match expected format:', contentData);
+            // Keep using default content
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching hero content:', error);
+        setConnectionError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+    fetchHeroContent();
+  }, []);
 
   // Get the appropriate content based on the current language
   const currentContent = content[language as keyof MultilingualHeroContent] || content.en;

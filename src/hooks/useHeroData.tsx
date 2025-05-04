@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -93,7 +92,23 @@ export const useHeroData = (language: string) => {
         }
         
         if (data && data.content) {
-          setContent(data.content as MultilingualHeroContent);
+          // Fix: Add type checking and validation before setting the content
+          const contentData = data.content;
+          
+          // Validate that the content has the expected structure
+          if (
+            typeof contentData === 'object' && 
+            contentData !== null && 
+            !Array.isArray(contentData) &&
+            'en' in contentData && 
+            'he' in contentData
+          ) {
+            // Cast to the expected type after validation
+            setContent(contentData as MultilingualHeroContent);
+          } else {
+            console.error('Hero content does not match expected format:', contentData);
+            // Keep using default content
+          }
         }
       } catch (error) {
         console.error('Error fetching hero content:', error);
