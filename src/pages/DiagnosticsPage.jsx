@@ -1,15 +1,16 @@
+
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const DiagnosticsPage = () => {
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const addResult = (test: string, result: any) => {
+  const addResult = (test, result) => {
     setResults(prev => [...prev, { test, result, timestamp: new Date().toISOString() }]);
   };
 
-  const runTest = async (name: string, fn: () => Promise<any>) => {
+  const runTest = async (name, fn) => {
     try {
       addResult(`${name} - Starting`, 'Running...');
       const startTime = performance.now();
@@ -79,7 +80,7 @@ const DiagnosticsPage = () => {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-black"> {supabase.DiagnosticsPage} </h1>
+      <h1 className="text-2xl font-bold mb-6 text-black">Diagnostics Page</h1>
       
       <div className="flex space-x-4 mb-6">
         <button 

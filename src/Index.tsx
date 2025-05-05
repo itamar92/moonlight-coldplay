@@ -1,11 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
-import HeroSection from '../components/HeroSection';
-import ShowsSection from '../components/ShowsSection';
-import MediaSection from '../components/MediaSection';
-import TestimonialsSection from '../components/TestimonialsSection';
-import FooterSection from '../components/FooterSection';
+import Navbar from './components/Navbar';
+import HeroSection from './components/HeroSection';
+import ShowsSection from './components/ShowsSection';
+import MediaSection from './components/MediaSection';
+import TestimonialsSection from './components/TestimonialsSection';
+import FooterSection from './components/FooterSection';
 import { supabase, checkSupabaseConnection, testBasicConnection } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
