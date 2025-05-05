@@ -11,6 +11,7 @@ import Admin from "./pages/Admin";
 import ContentEditor from "./pages/ContentEditor";
 import NotFound from "./pages/NotFound";
 import AllShows from "./pages/AllShows";
+import DiagnosticsPage from "./pages/DiagnosticsPage";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/editor" element={<ContentEditor />} />
             <Route path="/shows" element={<AllShows />} />
+            <Route path="/diagnostics" element={<DiagnosticsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
