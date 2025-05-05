@@ -205,4 +205,7 @@ const DiagnosticsPage = () => {
         </div>
       </div>
     </div>
-  
+  );
+};
+
+export default DiagnosticsPage;
