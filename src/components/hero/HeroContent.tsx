@@ -1,7 +1,7 @@
-
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Json } from '@/integrations/supabase/types';
 
 interface HeroContent {
   title: string;
@@ -14,53 +14,156 @@ interface HeroContent {
   logo_url: string;
 }
 
-interface HeroContentProps {
-  loading: boolean;
-  content: HeroContent;
+interface MultilingualHeroContent {
+  en: HeroContent;
+  he: HeroContent;
 }
 
-const HeroContent: React.FC<HeroContentProps> = ({ loading, content }) => {
+const defaultContent: MultilingualHeroContent = {
+  en: {
+    title: 'MOONLIGHT',
+    subtitle: 'COLDPLAY TRIBUTE BAND',
+    description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision. Join us on a musical journey through the stars.',
+    button1_text: 'UPCOMING SHOWS',
+    button1_link: '#shows',
+    button2_text: 'FOLLOW US',
+    button2_link: '#',
+    logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+  },
+  he: {
+    title: 'MOONLIGHT',
+    subtitle: 'להקת המחווה לקולדפליי',
+    description: 'חווה את הקסם של המוזיקה האיקונית של קולדפליי בהופעה חיה עם תשוקה ודיוק. הצטרף אלינו למסע מוזיקלי בין הכוכבים.',
+    button1_text: 'הופעות קרובות',
+    button1_link: '#shows',
+    button2_text: 'עקבו אחרינו',
+    button2_link: '#',
+    logo_url: '/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png'
+  }
+};
+
+// Helper function to validate if an object is a valid HeroContent
+const isValidHeroContent = (obj: any): obj is HeroContent => {
   return (
-    <div className="container mx-auto px-4 z-10 text-center">
-      {loading ? (
-        <div className="space-y-8">
-          <Skeleton className="w-72 h-72 md:w-80 md:h-80 mx-auto rounded-full" />
-          <Skeleton className="h-10 max-w-md mx-auto" />
-          <Skeleton className="h-6 max-w-xs mx-auto" />
-          <Skeleton className="h-24 max-w-2xl mx-auto" />
-          <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <Skeleton className="h-12 w-40 mx-auto md:mx-0" />
-            <Skeleton className="h-12 w-40 mx-auto md:mx-0" />
-          </div>
-        </div>
-      ) : (
-        <>
-          <img 
-            src={content.logo_url} 
-            alt="Moonlight Logo" 
-            className="w-72 h-72 md:w-80 md:h-80 mx-auto mb-8 animate-pulse-glow"
-          />
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 text-glow">
-            <span className="text-white">{content.title}</span>
-          </h1>
-          <h2 className="text-xl md:text-3xl font-light mb-8 text-band-purple">
-            {content.subtitle}
-          </h2>
-          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-12">
-            {content.description}
-          </p>
-          <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-band-purple hover:bg-band-purple/80 text-white glow-purple" asChild>
-              <a href={content.button1_link}>{content.button1_text}</a>
-            </Button>
-            <Button size="lg" variant="outline" className="border-band-pink text-band-pink hover:bg-band-pink/10 glow-pink" asChild>
-              <a href={content.button2_link}>{content.button2_text}</a>
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
+    typeof obj === 'object' && 
+    obj !== null && 
+    !Array.isArray(obj) &&
+    typeof obj.title === 'string' &&
+    typeof obj.subtitle === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.button1_text === 'string' &&
+    typeof obj.button1_link === 'string' &&
+    typeof obj.button2_text === 'string' &&
+    typeof obj.button2_link === 'string' &&
+    typeof obj.logo_url === 'string'
   );
 };
 
-export default HeroContent;
+export const useHeroData = (language: string) => {
+  const [content, setContent] = useState<MultilingualHeroContent>(defaultContent);
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const { toast } = useToast();
+  const [connectionError, setConnectionError] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error checking session:', error);
+          return;
+        }
+        setSession(data.session);
+        
+        // If session exists, check if user is admin
+        if (data.session) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (!profileError && profileData) {
+            setIsAdmin(profileData.is_admin === true);
+          }
+        }
+      } catch (error) {
+        console.error('Error in session check:', error);
+      }
+    };
+
+    const fetchHeroContent = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('content')
+          .select('content')
+          .eq('section', 'hero')
+          .single();
+          
+        if (error) {
+          console.error('Error fetching hero content:', error);
+          setConnectionError(true);
+          return;
+        }
+        
+        if (data && data.content) {
+          // Fix: Add type checking and validation before setting the content
+          const contentData = data.content;
+          
+          // Validate that the content has the expected structure
+          if (
+            typeof contentData === 'object' && 
+            contentData !== null && 
+            !Array.isArray(contentData) &&
+            'en' in contentData && 
+            'he' in contentData
+          ) {
+            // Validate both language objects
+            const enContent = contentData.en;
+            const heContent = contentData.he;
+            
+            if (isValidHeroContent(enContent) && isValidHeroContent(heContent)) {
+              // Create a properly typed object to satisfy TypeScript
+              const typedContent: MultilingualHeroContent = {
+                en: enContent,
+                he: heContent
+              };
+              
+              setContent(typedContent);
+            } else {
+              console.error('Hero content language objects are invalid:', contentData);
+              // Keep using default content
+            }
+          } else {
+            console.error('Hero content does not match expected format:', contentData);
+            // Keep using default content
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching hero content:', error);
+        setConnectionError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+    fetchHeroContent();
+  }, []);
+
+  // Get the appropriate content based on the current language
+  const currentContent = content[language as keyof MultilingualHeroContent] || content.en;
+
+  return {
+    loading,
+    isAdmin,
+    connectionError,
+    session,
+    currentContent
+  };
+};
+
+export type { HeroContent, MultilingualHeroContent };
