@@ -79,24 +79,85 @@ export const checkSupabaseConnection = async (
  * @returns Promise<void>
  */
 export const testDataAccess = async (): Promise<void> => {
-  const tables = ['profiles', 'shows', 'media', 'testimonials', 'content'];
-  
   console.log('Testing data access to all tables...');
   
-  for (const table of tables) {
-    try {
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .limit(1);
-        
-      if (error) {
-        console.error(`Error accessing table ${table}:`, error);
-      } else {
-        console.log(`Successfully accessed table ${table}:`, data);
-      }
-    } catch (err) {
-      console.error(`Exception when accessing table ${table}:`, err);
+  // Test profiles table
+  try {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(1);
+      
+    if (profilesError) {
+      console.error('Error accessing table profiles:', profilesError);
+    } else {
+      console.log('Successfully accessed table profiles:', profilesData);
     }
+  } catch (err) {
+    console.error('Exception when accessing table profiles:', err);
+  }
+  
+  // Test shows table
+  try {
+    const { data: showsData, error: showsError } = await supabase
+      .from('shows')
+      .select('*')
+      .limit(1);
+      
+    if (showsError) {
+      console.error('Error accessing table shows:', showsError);
+    } else {
+      console.log('Successfully accessed table shows:', showsData);
+    }
+  } catch (err) {
+    console.error('Exception when accessing table shows:', err);
+  }
+  
+  // Test media table
+  try {
+    const { data: mediaData, error: mediaError } = await supabase
+      .from('media')
+      .select('*')
+      .limit(1);
+      
+    if (mediaError) {
+      console.error('Error accessing table media:', mediaError);
+    } else {
+      console.log('Successfully accessed table media:', mediaData);
+    }
+  } catch (err) {
+    console.error('Exception when accessing table media:', err);
+  }
+  
+  // Test testimonials table
+  try {
+    const { data: testimonialsData, error: testimonialsError } = await supabase
+      .from('testimonials')
+      .select('*')
+      .limit(1);
+      
+    if (testimonialsError) {
+      console.error('Error accessing table testimonials:', testimonialsError);
+    } else {
+      console.log('Successfully accessed table testimonials:', testimonialsData);
+    }
+  } catch (err) {
+    console.error('Exception when accessing table testimonials:', err);
+  }
+  
+  // Test content table
+  try {
+    const { data: contentData, error: contentError } = await supabase
+      .from('content')
+      .select('*')
+      .limit(1);
+      
+    if (contentError) {
+      console.error('Error accessing table content:', contentError);
+    } else {
+      console.log('Successfully accessed table content:', contentData);
+    }
+  } catch (err) {
+    console.error('Exception when accessing table content:', err);
   }
 };
