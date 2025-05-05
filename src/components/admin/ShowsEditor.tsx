@@ -19,6 +19,27 @@ interface Show {
   is_published: boolean;
 }
 
+// Parse a date string in dd/MM/yyyy format to a Date object
+function parseDateString(dateString: string): Date | null {
+  try {
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/');
+      const parsedDate = new Date(`${year}-${month}-${day}`);
+      
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    
+    // Fallback to standard date parsing
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) ? date : null;
+  } catch (e) {
+    console.error('Error parsing date:', dateString, e);
+    return null;
+  }
+}
+
 const ShowsEditor = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,12 +65,27 @@ const ShowsEditor = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('shows')
-        .select('*')
-        .order('date', { ascending: true });
+        .select('*');
         
       if (error) throw error;
       
-      setShows(data || []);
+      if (data && data.length > 0) {
+        // Sort shows by date chronologically
+        const sortedShows = data.sort((a, b) => {
+          const dateA = parseDateString(a.date);
+          const dateB = parseDateString(b.date);
+          
+          if (dateA && dateB) {
+            return dateA.getTime() - dateB.getTime();
+          }
+          
+          return 0;
+        });
+        
+        setShows(sortedShows);
+      } else {
+        setShows([]);
+      }
     } catch (error) {
       console.error('Error fetching shows:', error);
       toast({

@@ -51,14 +51,25 @@ const AllShows = () => {
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
-          .eq('is_published', true)
-          .order('date', { ascending: true });
+          .eq('is_published', true);
 
         if (supabaseError) throw supabaseError;
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          setShows(supabaseData);
+          // Sort shows by date chronologically
+          const sortedShows = supabaseData.sort((a, b) => {
+            const dateA = parseDateString(a.date);
+            const dateB = parseDateString(b.date);
+            
+            if (dateA && dateB) {
+              return dateA.getTime() - dateB.getTime();
+            }
+            
+            return 0;
+          });
+          
+          setShows(sortedShows);
           setLoading(false);
           return;
         }
@@ -71,7 +82,19 @@ const AllShows = () => {
         if (functionError) throw functionError;
         
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-          setShows(googleSheetsData.shows);
+          // Sort shows from Google Sheets by date chronologically
+          const sortedShows = googleSheetsData.shows.sort((a: any, b: any) => {
+            const dateA = parseDateString(a.date);
+            const dateB = parseDateString(b.date);
+            
+            if (dateA && dateB) {
+              return dateA.getTime() - dateB.getTime();
+            }
+            
+            return 0;
+          });
+          
+          setShows(sortedShows);
         } else {
           // No shows found in either Supabase or Google Sheets
           setShows([]);

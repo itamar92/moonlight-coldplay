@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,8 +54,7 @@ const ShowsSection = () => {
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
-          .eq('is_published', true)
-          .order('date', { ascending: true });
+          .eq('is_published', true);
 
         if (supabaseError) {
           console.error('Error fetching shows:', supabaseError);
@@ -65,7 +65,19 @@ const ShowsSection = () => {
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          setShows(supabaseData.slice(0, 4)); // Only show the first 4 shows in the homepage section
+          // Sort shows by date chronologically
+          const sortedShows = supabaseData.sort((a, b) => {
+            const dateA = parseDateString(a.date);
+            const dateB = parseDateString(b.date);
+            
+            if (dateA && dateB) {
+              return dateA.getTime() - dateB.getTime();
+            }
+            
+            return 0;
+          });
+          
+          setShows(sortedShows.slice(0, 4)); // Only show the first 4 shows in the homepage section
         } else {
           console.log('No shows found in database');
           // No shows found
