@@ -17,6 +17,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const testBasicConnection = async (): Promise<boolean> => {
   try {
+    console.log('Attempting basic connection test to Supabase...');
+    
     // Try a simple query that should always work if the connection is valid
     const { data, error } = await supabase.from('profiles').select('id').limit(1);
     
@@ -25,6 +27,7 @@ export const testBasicConnection = async (): Promise<boolean> => {
       return false;
     }
     
+    console.log('Basic connection test successful, data received:', data);
     return true;
   } catch (error) {
     console.error('Basic connection test threw an exception:', error);
@@ -69,4 +72,31 @@ export const checkSupabaseConnection = async (
   
   console.error(`Failed to connect to Supabase after ${maxAttempts} attempts`);
   return false;
+};
+
+/**
+ * Performs a test query to check if data is accessible from specific tables
+ * @returns Promise<void>
+ */
+export const testDataAccess = async (): Promise<void> => {
+  const tables = ['profiles', 'shows', 'media', 'testimonials', 'content'];
+  
+  console.log('Testing data access to all tables...');
+  
+  for (const table of tables) {
+    try {
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .limit(1);
+        
+      if (error) {
+        console.error(`Error accessing table ${table}:`, error);
+      } else {
+        console.log(`Successfully accessed table ${table}:`, data);
+      }
+    } catch (err) {
+      console.error(`Exception when accessing table ${table}:`, err);
+    }
+  }
 };

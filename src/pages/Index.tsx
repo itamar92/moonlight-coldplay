@@ -6,7 +6,7 @@ import ShowsSection from '../components/ShowsSection';
 import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import { supabase, checkSupabaseConnection, testBasicConnection } from '@/integrations/supabase/client';
+import { supabase, checkSupabaseConnection, testBasicConnection, testDataAccess } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -37,6 +37,9 @@ const Index = () => {
           setIsLoading(false);
           return;
         }
+        
+        // Test data access to see if we can retrieve data from tables
+        await testDataAccess();
         
         // Then proceed with the regular connection check
         const isConnected = await checkSupabaseConnection(4, 1000);
