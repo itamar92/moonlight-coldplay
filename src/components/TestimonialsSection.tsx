@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Quote } from "lucide-react";
@@ -21,38 +22,56 @@ const TestimonialsSection = () => {
 
   useEffect(() => {
     const fetchTestimonials = async () => {
+      console.log('🔍 TestimonialsSection: Starting fetch...');
+      
       try {
-        console.log('TestimonialsSection: Starting data fetch...');
-        console.log('TestimonialsSection: Supabase client status:', supabase ? 'Available' : 'Not available');
-        
-        setLoading(true);
-        setError(null);
-        
-        console.log('TestimonialsSection: About to call supabase.from("testimonials")...');
-        
-        const { data, error: supabaseError } = await supabase
+        // Add a timeout to the query
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+        );
+
+        const queryPromise = supabase
           .from('testimonials')
           .select('*')
           .order('order', { ascending: true });
-          
-        console.log('TestimonialsSection: Supabase query completed');
-        console.log('TestimonialsSection: Data received:', data);
-        console.log('TestimonialsSection: Error received:', supabaseError);
+
+        const { data, error: supabaseError } = await Promise.race([
+          queryPromise,
+          timeoutPromise
+        ]) as any;
+
+        console.log('✅ TestimonialsSection: Query completed');
         
         if (supabaseError) {
-          console.error('TestimonialsSection: Supabase error details:', {
-            message: supabaseError.message,
-            details: supabaseError.details,
-            hint: supabaseError.hint,
-            code: supabaseError.code
-          });
+          console.error('❌ TestimonialsSection: Error:', supabaseError.message);
           setError(supabaseError.message);
-          setTestimonials([]);
+          // Use fallback data
+          const fallbackData = [
+            {
+              id: 'fallback-1',
+              author: language === 'en' ? 'Music Fan' : 'אוהב מוזיקה',
+              role: language === 'en' ? 'Concert Goer' : 'צופה קונצרטים',
+              content: language === 'en' 
+                ? "Amazing performance! They really captured the essence of Coldplay's music."
+                : "הופעה מדהימה! הם באמת תפסו את המהות של המוזיקה של קולדפליי.",
+              order: 1
+            },
+            {
+              id: 'fallback-2',
+              author: language === 'en' ? 'Event Organizer' : 'מארגן אירועים',
+              role: language === 'en' ? 'Venue Manager' : 'מנהל מקום',
+              content: language === 'en'
+                ? "Professional, talented, and truly entertaining. Highly recommended!"
+                : "מקצועיים, מוכשרים ובאמת משעשעים. מומלץ בחום!",
+              order: 2
+            }
+          ];
+          setTestimonials(fallbackData);
         } else if (data && data.length > 0) {
-          console.log('TestimonialsSection: Setting testimonials data:', data);
+          console.log('📊 TestimonialsSection: Found', data.length, 'testimonials');
           setTestimonials(data);
         } else {
-          console.log('TestimonialsSection: No testimonials found, using fallback data');
+          console.log('📭 TestimonialsSection: No data, using fallback');
           // Use fallback data when no testimonials exist
           const fallbackData = [
             {
@@ -77,27 +96,17 @@ const TestimonialsSection = () => {
           setTestimonials(fallbackData);
         }
       } catch (error) {
-        console.error('TestimonialsSection: Caught exception:', error);
-        console.error('TestimonialsSection: Exception type:', typeof error);
-        console.error('TestimonialsSection: Exception details:', {
-          name: error instanceof Error ? error.name : 'Unknown',
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : 'No stack trace'
-        });
+        console.error('💥 TestimonialsSection: Exception:', error instanceof Error ? error.message : 'Unknown error');
         setError(error instanceof Error ? error.message : 'Unknown error occurred');
         setTestimonials([]);
       } finally {
-        console.log('TestimonialsSection: Entering finally block - setting loading to false');
+        console.log('🏁 TestimonialsSection: Setting loading to false');
         setLoading(false);
-        console.log('TestimonialsSection: Loading set to false');
       }
     };
 
-    console.log('TestimonialsSection: useEffect triggered, calling fetchTestimonials');
     fetchTestimonials();
   }, [language]);
-
-  console.log('TestimonialsSection: Render - Current state:', { loading, testimonials: testimonials.length, error });
 
   const texts = {
     whatPeopleSay: language === 'en' ? 'WHAT PEOPLE SAY' : 'מה אנשים אומרים',
@@ -106,7 +115,6 @@ const TestimonialsSection = () => {
   };
 
   if (loading) {
-    console.log('TestimonialsSection: Rendering loading state');
     return (
       <section className="py-24 bg-gradient-to-b from-band-dark to-black">
         <div className="container mx-auto px-4">
@@ -130,7 +138,6 @@ const TestimonialsSection = () => {
   }
 
   if (error) {
-    console.log('TestimonialsSection: Rendering error state');
     return (
       <section className="py-24 bg-gradient-to-b from-band-dark to-black">
         <div className="container mx-auto px-4">
@@ -153,30 +160,6 @@ const TestimonialsSection = () => {
     );
   }
 
-  if (testimonials.length === 0) {
-    console.log('TestimonialsSection: Rendering no data state');
-    return (
-      <section className="py-24 bg-gradient-to-b from-band-dark to-black">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white text-glow">
-              {language === 'en' ? (
-                <>WHAT PEOPLE <span className="text-band-purple">SAY</span></>
-              ) : (
-                <>מה אנשים <span className="text-band-purple">אומרים</span></>
-              )}
-            </h2>
-            <div className="h-1 w-20 bg-band-purple mx-auto"></div>
-          </div>
-          <div className="text-center py-16">
-            <p className="text-white/70">{texts.noTestimonials}</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  console.log('TestimonialsSection: Rendering testimonials content');
   return (
     <section className="py-24 bg-gradient-to-b from-band-dark to-black">
       <div className="container mx-auto px-4">

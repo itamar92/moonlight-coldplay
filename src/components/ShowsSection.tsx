@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,38 +47,37 @@ const ShowsSection = () => {
 
   useEffect(() => {
     const fetchShows = async () => {
+      console.log('🎵 ShowsSection: Starting fetch...');
+      
       try {
-        console.log('ShowsSection: Starting data fetch...');
-        console.log('ShowsSection: Supabase client status:', supabase ? 'Available' : 'Not available');
-        
         setLoading(true);
         setError(null);
         
-        console.log('ShowsSection: About to call supabase.from("shows")...');
-        
-        // First try to get shows from Supabase
-        const { data: supabaseData, error: supabaseError } = await supabase
+        // Add timeout to the query
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+        );
+
+        const queryPromise = supabase
           .from('shows')
           .select('*')
           .eq('is_published', true);
 
-        console.log('ShowsSection: Supabase query completed');
-        console.log('ShowsSection: Data received:', supabaseData);
-        console.log('ShowsSection: Error received:', supabaseError);
+        const { data: supabaseData, error: supabaseError } = await Promise.race([
+          queryPromise,
+          timeoutPromise
+        ]) as any;
+
+        console.log('✅ ShowsSection: Query completed');
 
         if (supabaseError) {
-          console.error('ShowsSection: Supabase error details:', {
-            message: supabaseError.message,
-            details: supabaseError.details,
-            hint: supabaseError.hint,
-            code: supabaseError.code
-          });
+          console.error('❌ ShowsSection: Supabase error:', supabaseError.message);
           throw supabaseError;
         }
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          console.log('ShowsSection: Processing Supabase data:', supabaseData);
+          console.log('📊 ShowsSection: Found', supabaseData.length, 'shows in Supabase');
           
           // Get current date for filtering future shows
           const now = new Date();
@@ -86,9 +86,7 @@ const ShowsSection = () => {
           // Filter and sort shows
           const futureShows = supabaseData.filter(show => {
             const showDate = parseDateString(show.date);
-            const isFuture = showDate && showDate >= now;
-            console.log(`ShowsSection: Show ${show.venue} on ${show.date}, parsed: ${showDate}, is future: ${isFuture}`);
-            return isFuture;
+            return showDate && showDate >= now;
           }).sort((a, b) => {
             const dateA = parseDateString(a.date);
             const dateB = parseDateString(b.date);
@@ -100,28 +98,24 @@ const ShowsSection = () => {
             return 0;
           });
           
-          console.log('ShowsSection: Filtered future shows:', futureShows);
+          console.log('📅 ShowsSection: Filtered to', futureShows.length, 'future shows');
           setShows(futureShows.slice(0, 3)); // Show only first 3 upcoming shows
         } else {
-          console.log('ShowsSection: No shows in Supabase, trying Google Sheets...');
+          console.log('📭 ShowsSection: No shows in Supabase, trying Google Sheets...');
           
           // Try to fetch from Google Sheets
           try {
-            console.log('ShowsSection: About to call supabase.functions.invoke...');
             const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
               'fetch-google-sheet'
             );
 
-            console.log('ShowsSection: Google Sheets response received');
-            console.log('ShowsSection: Google Sheets data:', googleSheetsData);
-            console.log('ShowsSection: Google Sheets error:', functionError);
-
             if (functionError) {
-              console.error('ShowsSection: Google Sheets error details:', functionError);
+              console.error('❌ ShowsSection: Google Sheets error:', functionError);
               throw functionError;
             }
             
             if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+              console.log('📊 ShowsSection: Found', googleSheetsData.shows.length, 'shows in Google Sheets');
               // Process Google Sheets data similarly
               const now = new Date();
               now.setHours(0, 0, 0, 0);
@@ -140,26 +134,18 @@ const ShowsSection = () => {
                 return 0;
               });
               
-              console.log('ShowsSection: Setting Google Sheets shows:', futureShows.slice(0, 3));
               setShows(futureShows.slice(0, 3));
             } else {
-              // No shows found anywhere
-              console.log('ShowsSection: No shows found in either source');
+              console.log('📭 ShowsSection: No shows found anywhere');
               setShows([]);
             }
           } catch (googleError) {
-            console.log('ShowsSection: Google Sheets fetch failed:', googleError);
+            console.log('❌ ShowsSection: Google Sheets failed:', googleError);
             setShows([]);
           }
         }
       } catch (error: any) {
-        console.error('ShowsSection: Caught exception:', error);
-        console.error('ShowsSection: Exception type:', typeof error);
-        console.error('ShowsSection: Exception details:', {
-          name: error instanceof Error ? error.name : 'Unknown',
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : 'No stack trace'
-        });
+        console.error('💥 ShowsSection: Exception:', error instanceof Error ? error.message : 'Unknown error');
         setError(error.message || 'Failed to load shows');
         setShows([]);
         toast({
@@ -170,17 +156,13 @@ const ShowsSection = () => {
             : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
         });
       } finally {
-        console.log('ShowsSection: Entering finally block - setting loading to false');
+        console.log('🏁 ShowsSection: Setting loading to false');
         setLoading(false);
-        console.log('ShowsSection: Loading set to false');
       }
     };
 
-    console.log('ShowsSection: useEffect triggered, calling fetchShows');
     fetchShows();
   }, [language, toast]);
-
-  console.log('ShowsSection: Render - Current state:', { loading, shows: shows.length, error });
 
   // Format the date for display
   const formatDate = (dateString: string) => {
@@ -214,7 +196,6 @@ const ShowsSection = () => {
   };
 
   if (loading) {
-    console.log('ShowsSection: Rendering loading state');
     return (
       <section id="shows" className="py-24 bg-band-dark">
         <div className="container mx-auto px-4">
@@ -238,7 +219,6 @@ const ShowsSection = () => {
   }
 
   if (error) {
-    console.log('ShowsSection: Rendering error state');
     return (
       <section id="shows" className="py-24 bg-band-dark">
         <div className="container mx-auto px-4">
@@ -262,7 +242,6 @@ const ShowsSection = () => {
   }
 
   if (shows.length === 0) {
-    console.log('ShowsSection: Rendering no shows state');
     return (
       <section id="shows" className="py-24 bg-band-dark">
         <div className="container mx-auto px-4">
@@ -285,7 +264,6 @@ const ShowsSection = () => {
     );
   }
 
-  console.log('ShowsSection: Rendering shows content');
   return (
     <section id="shows" className="py-24 bg-band-dark">
       <div className="container mx-auto px-4">
