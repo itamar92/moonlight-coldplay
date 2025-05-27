@@ -17,76 +17,29 @@ interface Testimonial {
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { language } = useLanguage();
 
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        
-        const { data, error: supabaseError } = await supabase
+        const { data, error } = await supabase
           .from('testimonials')
           .select('*')
           .order('order', { ascending: true });
 
-        if (supabaseError) {
-          console.error('Supabase error:', supabaseError);
-          throw supabaseError;
-        }
-        
-        if (data && data.length > 0) {
+        if (error) {
+          console.error('Supabase error:', error);
+          // Use fallback data on error
+          setTestimonials(getFallbackData());
+        } else if (data && data.length > 0) {
           setTestimonials(data);
         } else {
           // Use fallback data when no testimonials exist
-          const fallbackData = [
-            {
-              id: 'fallback-1',
-              author: language === 'en' ? 'Music Fan' : 'אוהב מוזיקה',
-              role: language === 'en' ? 'Concert Goer' : 'צופה קונצרטים',
-              content: language === 'en' 
-                ? "Amazing performance! They really captured the essence of Coldplay's music."
-                : "הופעה מדהימה! הם באמת תפסו את המהות של המוזיקה של קולדפליי.",
-              order: 1
-            },
-            {
-              id: 'fallback-2',
-              author: language === 'en' ? 'Event Organizer' : 'מארגן אירועים',
-              role: language === 'en' ? 'Venue Manager' : 'מנהל מקום',
-              content: language === 'en'
-                ? "Professional, talented, and truly entertaining. Highly recommended!"
-                : "מקצועיים, מוכשרים ובאמת משעשעים. מומלץ בחום!",
-              order: 2
-            }
-          ];
-          setTestimonials(fallbackData);
+          setTestimonials(getFallbackData());
         }
       } catch (error) {
         console.error('Error fetching testimonials:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error occurred');
-        // Use fallback data on error
-        const fallbackData = [
-          {
-            id: 'fallback-1',
-            author: language === 'en' ? 'Music Fan' : 'אוהב מוזיקה',
-            role: language === 'en' ? 'Concert Goer' : 'צופה קונצרטים',
-            content: language === 'en' 
-              ? "Amazing performance! They really captured the essence of Coldplay's music."
-              : "הופעה מדהימה! הם באמת תפסו את המהות של המוזיקה של קולדפליי.",
-            order: 1
-          },
-          {
-            id: 'fallback-2',
-            author: language === 'en' ? 'Event Organizer' : 'מארגן אירועים',
-            role: language === 'en' ? 'Venue Manager' : 'מנהל מקום',
-            content: language === 'en'
-              ? "Professional, talented, and truly entertaining. Highly recommended!"
-              : "מקצועיים, מוכשרים ובאמת משעשעים. מומלץ בחום!",
-            order: 2
-          }
-        ];
-        setTestimonials(fallbackData);
+        setTestimonials(getFallbackData());
       } finally {
         setLoading(false);
       }
@@ -95,11 +48,26 @@ const TestimonialsSection = () => {
     fetchTestimonials();
   }, [language]);
 
-  const texts = {
-    whatPeopleSay: language === 'en' ? 'WHAT PEOPLE SAY' : 'מה אנשים אומרים',
-    loading: language === 'en' ? 'Loading testimonials...' : 'טוען המלצות...',
-    noTestimonials: language === 'en' ? 'No testimonials available.' : 'אין המלצות זמינות.',
-  };
+  const getFallbackData = (): Testimonial[] => [
+    {
+      id: 'fallback-1',
+      author: language === 'en' ? 'Music Fan' : 'אוהב מוזיקה',
+      role: language === 'en' ? 'Concert Goer' : 'צופה קונצרטים',
+      content: language === 'en' 
+        ? "Amazing performance! They really captured the essence of Coldplay's music."
+        : "הופעה מדהימה! הם באמת תפסו את המהות של המוזיקה של קולדפליי.",
+      order: 1
+    },
+    {
+      id: 'fallback-2',
+      author: language === 'en' ? 'Event Organizer' : 'מארגן אירועים',
+      role: language === 'en' ? 'Venue Manager' : 'מנהל מקום',
+      content: language === 'en'
+        ? "Professional, talented, and truly entertaining. Highly recommended!"
+        : "מקצועיים, מוכשרים ובאמת משעשעים. מומלץ בחום!",
+      order: 2
+    }
+  ];
 
   if (loading) {
     return (
@@ -117,7 +85,9 @@ const TestimonialsSection = () => {
           </div>
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">{texts.loading}</p>
+            <p className="mt-4 text-white/70">
+              {language === 'en' ? 'Loading testimonials...' : 'טוען המלצות...'}
+            </p>
           </div>
         </div>
       </section>

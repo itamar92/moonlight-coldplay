@@ -25,9 +25,6 @@ const MediaSection = () => {
   useEffect(() => {
     const fetchMedia = async () => {
       try {
-        setLoading(true);
-        console.log('Fetching media data...');
-        
         const { data, error } = await supabase
           .from('media')
           .select('*')
@@ -35,29 +32,31 @@ const MediaSection = () => {
           
         if (error) {
           console.error('Error fetching media:', error);
-          return;
+          // Use default data on error
+          setPhotos(getDefaultPhotos());
+          setVideos(getDefaultVideos());
+        } else if (data && data.length > 0) {
+          const photosData = data.filter(item => item.type === 'photo').map(item => ({
+            ...item,
+            type: 'photo' as const
+          }));
+          
+          const videosData = data.filter(item => item.type === 'video').map(item => ({
+            ...item,
+            type: 'video' as const
+          }));
+          
+          setPhotos(photosData.length > 0 ? photosData : getDefaultPhotos());
+          setVideos(videosData.length > 0 ? videosData : getDefaultVideos());
+        } else {
+          // Use default data when no media exists
+          setPhotos(getDefaultPhotos());
+          setVideos(getDefaultVideos());
         }
-        
-        console.log('Media data received:', data);
-        
-        // Filter media into photos and videos with proper type casting
-        const photosData = data?.filter(item => item.type === 'photo').map(item => ({
-          ...item,
-          type: 'photo' as const
-        })) || [];
-        
-        const videosData = data?.filter(item => item.type === 'video').map(item => ({
-          ...item,
-          type: 'video' as const
-        })) || [];
-        
-        console.log('Photos data:', photosData);
-        console.log('Videos data:', videosData);
-        
-        setPhotos(photosData);
-        setVideos(videosData);
       } catch (error) {
         console.error('Error in media fetch:', error);
+        setPhotos(getDefaultPhotos());
+        setVideos(getDefaultVideos());
       } finally {
         setLoading(false);
       }
@@ -66,8 +65,7 @@ const MediaSection = () => {
     fetchMedia();
   }, []);
 
-  // Fallback to sample data if no database data is available
-  const defaultPhotos = [
+  const getDefaultPhotos = (): MediaItem[] => [
     { id: '1', type: 'photo' as const, url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Concert photo 1", description: "Live at Starlight Arena" },
     { id: '2', type: 'photo' as const, url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 2", description: "Summer Tour 2023" },
     { id: '3', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 3", description: "Acoustic Session" },
@@ -76,7 +74,7 @@ const MediaSection = () => {
     { id: '6', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 6", description: "Live at The Paradise" },
   ];
   
-  const defaultVideos = [
+  const getDefaultVideos = (): MediaItem[] => [
     { 
       id: '1', 
       type: 'video' as const, 
@@ -103,14 +101,30 @@ const MediaSection = () => {
     },
   ];
 
-  const displayPhotos = photos.length > 0 ? photos : defaultPhotos;
-  const displayVideos = videos.length > 0 ? videos : defaultVideos;
   const texts = {
     mediaText: language === 'en' ? 'MEDIA' : ' גלריית',
     mediaText2: language === 'en' ? 'GALLERY' : 'תמונות',
     paragraphText: language === 'en' ? 'Relive the magic of our performances through our collection of photos and videos.' : 'תמונות מהופעות חיות'
-
   };
+
+  if (loading) {
+    return (
+      <section id="media" className="py-20 bg-black relative overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
+              {texts.mediaText} <span className="text-band-blue">{texts.mediaText2}</span>
+            </h2>
+            <div className="h-1 w-20 bg-band-blue mx-auto mb-8"></div>
+          </div>
+          <div className="text-center py-12">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-blue border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <p className="mt-4 text-white/70">Loading media...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="media" className="py-20 bg-black relative overflow-hidden">
@@ -121,7 +135,7 @@ const MediaSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-          {texts.mediaText} <span className="text-band-blue">{texts.mediaText2}</span>
+            {texts.mediaText} <span className="text-band-blue">{texts.mediaText2}</span>
           </h2>
           <div className="h-1 w-20 bg-band-blue mx-auto mb-8"></div>
           <p className="text-white/70 max-w-2xl mx-auto">
@@ -149,7 +163,7 @@ const MediaSection = () => {
           
           <TabsContent value="photos" className="mt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {displayPhotos.map((photo) => (
+              {photos.map((photo) => (
                 <div key={photo.id} className="relative overflow-hidden rounded-lg group">
                   <img 
                     src={photo.url} 
@@ -166,7 +180,7 @@ const MediaSection = () => {
           
           <TabsContent value="videos" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayVideos.map((video) => (
+              {videos.map((video) => (
                 <div key={video.id} className="relative overflow-hidden rounded-lg group">
                   <div className="relative">
                     <img 
