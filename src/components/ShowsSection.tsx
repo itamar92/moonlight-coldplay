@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, MapPin } from "lucide-react";
@@ -41,14 +41,16 @@ function parseDateString(dateString: string): Date | null {
 const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { language } = useLanguage();
 
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        setLoading(true);
         console.log('Fetching shows data...');
+        setLoading(true);
+        setError(null);
         
         // First try to get shows from Supabase
         const { data: supabaseData, error: supabaseError } = await supabase
@@ -57,7 +59,7 @@ const ShowsSection = () => {
           .eq('is_published', true);
 
         if (supabaseError) {
-          console.error('Error fetching shows:', supabaseError);
+          console.error('Supabase error:', supabaseError);
           throw supabaseError;
         }
         
@@ -65,8 +67,15 @@ const ShowsSection = () => {
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          // Sort shows by date chronologically
-          const sortedShows = supabaseData.sort((a, b) => {
+          // Get current date for filtering future shows
+          const now = new Date();
+          now.setHours(0, 0, 0, 0); // Reset time to start of day
+          
+          // Filter and sort shows
+          const futureShows = supabaseData.filter(show => {
+            const showDate = parseDateString(show.date);
+            return showDate && showDate >= now;
+          }).sort((a, b) => {
             const dateA = parseDateString(a.date);
             const dateB = parseDateString(b.date);
             
@@ -77,32 +86,69 @@ const ShowsSection = () => {
             return 0;
           });
           
-          setShows(sortedShows.slice(0, 4)); // Only show the first 4 shows in the homepage section
+          console.log('Filtered future shows:', futureShows);
+          setShows(futureShows.slice(0, 3)); // Show only first 3 upcoming shows
+          setLoading(false);
+          return;
+        }
+        
+        // If no data in Supabase, try to fetch from Google Sheets
+        console.log('No shows in Supabase, trying Google Sheets...');
+        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
+          'fetch-google-sheet'
+        );
+
+        if (functionError) {
+          console.error('Google Sheets error:', functionError);
+          throw functionError;
+        }
+        
+        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+          // Process Google Sheets data similarly
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          
+          const futureShows = googleSheetsData.shows.filter((show: any) => {
+            const showDate = parseDateString(show.date);
+            return showDate && showDate >= now;
+          }).sort((a: any, b: any) => {
+            const dateA = parseDateString(a.date);
+            const dateB = parseDateString(b.date);
+            
+            if (dateA && dateB) {
+              return dateA.getTime() - dateB.getTime();
+            }
+            
+            return 0;
+          });
+          
+          setShows(futureShows.slice(0, 3));
         } else {
-          console.log('No shows found in database');
-          // No shows found
+          // No shows found anywhere
+          console.log('No shows found in either source');
           setShows([]);
         }
       } catch (error: any) {
         console.error('Error fetching shows:', error);
+        setError(error.message || 'Failed to load shows');
         toast({
           variant: 'destructive',
-          title: 'Error fetching shows',
-          description: "Couldn't load upcoming shows. Please try again later.",
+          title: language === 'en' ? 'Error fetching shows' : 'שגיאה בטעינת הופעות',
+          description: language === 'en'
+            ? "Couldn't load upcoming shows. Please try again later."
+            : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
         });
-        setShows([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchShows();
-  }, [toast]);
+  }, [language, toast]);
 
   // Format the date for display
   const formatDate = (dateString: string) => {
     try {
-      // Parse the date using our custom function for dd/MM/yyyy format
       const date = parseDateString(dateString);
       
       if (date && !isNaN(date.getTime())) {
@@ -113,42 +159,36 @@ const ShowsSection = () => {
           year: 'numeric'
         }).format(date);
       }
-      return dateString; // Fall back to original string if parsing fails
+      return dateString;
     } catch (e) {
-      return dateString; // Return original date string in case of error
+      console.error('Error formatting date:', e);
+      return dateString;
     }
   };
 
   // Translations
   const texts = {
     upcomingShows: language === 'en' ? 'UPCOMING SHOWS' : 'הופעות קרובות',
-    description: language === 'en' 
-      ? "Don't miss your chance to experience the magic of Moonlight's music live. Check our tour schedule and grab your tickets before they're gone!"
-      : "אל תחמיצו את ההזדמנות לחוות את הקסם של המוזיקה של Moonlight בהופעה חיה. בדקו את לוח ההופעות שלנו והשיגו כרטיסים לפני שייגמרו!",
-    loading: language === 'en' ? 'Loading upcoming shows...' : 'טוען הופעות קרובות...',
-    noShows: language === 'en' ? 'No upcoming shows scheduled at the moment.' : 'אין הופעות קרובות מתוכננות כרגע.',
+    loading: language === 'en' ? 'Loading shows...' : 'טוען הופעות...',
+    noShows: language === 'en' ? 'No upcoming shows scheduled.' : 'אין הופעות קרובות מתוכננות.',
     checkBack: language === 'en' ? 'Check back soon!' : 'בדקו שוב בקרוב!',
     getTickets: language === 'en' ? 'GET TICKETS' : 'לרכישת כרטיסים',
-    contactBookings: language === 'en' ? 'CONTACT FOR BOOKINGS' : 'צרו קשר להזמנות',
-    viewAllShows: language === 'en' ? 'VIEW ALL SHOWS' : 'צפו בכל ההופעות'
+    viewAll: language === 'en' ? 'VIEW ALL SHOWS' : 'צפה בכל ההופעות',
+    error: language === 'en' ? 'Error loading shows' : 'שגיאה בטעינת הופעות',
   };
 
   return (
-    <section id="shows" className="py-20 bg-gradient-to-b from-band-dark to-black relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-cosmic"></div>
-      <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
-      <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-band-purple/10 blur-3xl"></div>
-      
+    <section id="shows" className="py-24 bg-band-dark">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
-            {texts.upcomingShows.split(' ')[0]} <span className="text-band-purple">{texts.upcomingShows.split(' ')[1]}</span>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white text-glow">
+            {language === 'en' ? (
+              <>UPCOMING <span className="text-band-purple">SHOWS</span></>
+            ) : (
+              <>הופעות <span className="text-band-purple">קרובות</span></>
+            )}
           </h2>
-          <div className="h-1 w-20 bg-band-purple mx-auto mb-8"></div>
-          <p className="text-white/70 max-w-2xl mx-auto">
-            {texts.description}
-          </p>
+          <div className="h-1 w-20 bg-band-purple mx-auto"></div>
         </div>
         
         {loading ? (
@@ -156,73 +196,69 @@ const ShowsSection = () => {
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
             <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-400 mb-4">{texts.error}</p>
+            <p className="text-white/70">{error}</p>
+          </div>
         ) : shows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-white/70">{texts.noShows}</p>
-            <p className="text-white/70 mt-2">{texts.checkBack}</p>
+            <p className="text-white/70 text-lg mb-2">{texts.noShows}</p>
+            <p className="text-white/70">{texts.checkBack}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {shows.map((show, index) => (
-              <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
-                {show.image_url && (
-                  <div className="h-48 w-full overflow-hidden">
-                    <img 
-                      src={show.image_url} 
-                      alt={show.venue} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                )}
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4 text-band-purple">
-                    <Calendar size={18} className="mr-2" />
-                    <span className="text-sm font-medium">{formatDate(show.date)}</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-1">{show.venue}</h3>
-                  <div className="flex items-center mb-6 text-white/70">
-                    <MapPin size={16} className="mr-2" />
-                    <span className="text-sm">{show.location}</span>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full border-band-purple text-band-purple hover:bg-band-purple hover:text-white transition-all"
-                    asChild
-                  >
-                    <a href={show.ticket_link} target="_blank" rel="noopener noreferrer">
-                      {texts.getTickets}
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+              {shows.map((show, index) => (
+                <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
+                  {show.image_url && (
+                    <div className="h-48 w-full overflow-hidden">
+                      <img 
+                        src={show.image_url} 
+                        alt={show.venue} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                  )}
+                  <CardContent className="p-6">
+                    <div className="flex items-center mb-4 text-band-purple">
+                      <Calendar size={18} className="mr-2" />
+                      <span className="text-sm font-medium">{formatDate(show.date)}</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-1">{show.venue}</h3>
+                    <div className="flex items-center mb-6 text-white/70">
+                      <MapPin size={16} className="mr-2" />
+                      <span className="text-sm">{show.location}</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full border-band-purple text-band-purple hover:bg-band-purple hover:text-white transition-all"
+                      asChild
+                    >
+                      <a href={show.ticket_link} target="_blank" rel="noopener noreferrer">
+                        {texts.getTickets}
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            <div className="text-center">
+              <Button 
+                variant="outline"
+                size="lg"
+                className="border-white text-white hover:bg-white hover:text-band-dark transition-all"
+                asChild
+              >
+                <Link to="/shows">
+                  {texts.viewAll}
+                </Link>
+              </Button>
+            </div>
+          </>
         )}
-        
-        <div className="text-center mt-12 flex flex-col sm:flex-row justify-center gap-4">
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="border-band-blue text-band-blue hover:bg-band-blue/10 glow-blue"
-            asChild
-          >
-            <a href="#contact">
-              {texts.contactBookings}
-            </a>
-          </Button>
-          
-          <Button 
-            size="lg" 
-            variant="default" 
-            className="bg-band-purple hover:bg-band-purple/90 text-white glow-purple"
-            asChild
-          >
-            <Link to="/shows">
-              {texts.viewAllShows}
-            </Link>
-          </Button>
-        </div>
       </div>
     </section>
   );

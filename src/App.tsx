@@ -8,6 +8,7 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import DiagnosticsPage from "./pages/DiagnosticsPage";
+import AllShows from "./pages/AllShows";
 import { Toaster } from "@/components/ui/toaster";
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/admin/*" element={<Admin />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/shows" element={<AllShows />} />
               <Route path="/diagnostics" element={<DiagnosticsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
