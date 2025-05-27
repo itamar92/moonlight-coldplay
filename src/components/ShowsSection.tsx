@@ -33,7 +33,6 @@ function parseDateString(dateString: string): Date | null {
     const date = new Date(dateString);
     return !isNaN(date.getTime()) ? date : null;
   } catch (e) {
-    console.error('Error parsing date:', dateString, e);
     return null;
   }
 }
@@ -47,41 +46,26 @@ const ShowsSection = () => {
 
   useEffect(() => {
     const fetchShows = async () => {
-      console.log('🎵 ShowsSection: Starting fetch...');
-      
       try {
         setLoading(true);
         setError(null);
         
-        // Add timeout to the query
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
-        );
-
-        const queryPromise = supabase
+        // Try to fetch from Supabase with a shorter timeout
+        const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
           .eq('is_published', true);
 
-        const { data: supabaseData, error: supabaseError } = await Promise.race([
-          queryPromise,
-          timeoutPromise
-        ]) as any;
-
-        console.log('✅ ShowsSection: Query completed');
-
         if (supabaseError) {
-          console.error('❌ ShowsSection: Supabase error:', supabaseError.message);
+          console.error('Supabase error:', supabaseError);
           throw supabaseError;
         }
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
-          console.log('📊 ShowsSection: Found', supabaseData.length, 'shows in Supabase');
-          
           // Get current date for filtering future shows
           const now = new Date();
-          now.setHours(0, 0, 0, 0); // Reset time to start of day
+          now.setHours(0, 0, 0, 0);
           
           // Filter and sort shows
           const futureShows = supabaseData.filter(show => {
@@ -98,25 +82,17 @@ const ShowsSection = () => {
             return 0;
           });
           
-          console.log('📅 ShowsSection: Filtered to', futureShows.length, 'future shows');
-          setShows(futureShows.slice(0, 3)); // Show only first 3 upcoming shows
+          setShows(futureShows.slice(0, 3));
         } else {
-          console.log('📭 ShowsSection: No shows in Supabase, trying Google Sheets...');
-          
-          // Try to fetch from Google Sheets
+          // Try Google Sheets fallback
           try {
             const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
               'fetch-google-sheet'
             );
 
-            if (functionError) {
-              console.error('❌ ShowsSection: Google Sheets error:', functionError);
-              throw functionError;
-            }
+            if (functionError) throw functionError;
             
             if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-              console.log('📊 ShowsSection: Found', googleSheetsData.shows.length, 'shows in Google Sheets');
-              // Process Google Sheets data similarly
               const now = new Date();
               now.setHours(0, 0, 0, 0);
               
@@ -136,33 +112,24 @@ const ShowsSection = () => {
               
               setShows(futureShows.slice(0, 3));
             } else {
-              console.log('📭 ShowsSection: No shows found anywhere');
               setShows([]);
             }
           } catch (googleError) {
-            console.log('❌ ShowsSection: Google Sheets failed:', googleError);
+            console.error('Google Sheets failed:', googleError);
             setShows([]);
           }
         }
       } catch (error: any) {
-        console.error('💥 ShowsSection: Exception:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('Error fetching shows:', error);
         setError(error.message || 'Failed to load shows');
         setShows([]);
-        toast({
-          variant: 'destructive',
-          title: language === 'en' ? 'Error fetching shows' : 'שגיאה בטעינת הופעות',
-          description: language === 'en'
-            ? "Couldn't load upcoming shows. Please try again later."
-            : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
-        });
       } finally {
-        console.log('🏁 ShowsSection: Setting loading to false');
         setLoading(false);
       }
     };
 
     fetchShows();
-  }, [language, toast]);
+  }, [language]);
 
   // Format the date for display
   const formatDate = (dateString: string) => {
@@ -179,7 +146,6 @@ const ShowsSection = () => {
       }
       return dateString;
     } catch (e) {
-      console.error('Error formatting date:', e);
       return dateString;
     }
   };
