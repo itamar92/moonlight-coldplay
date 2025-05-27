@@ -17,31 +17,34 @@ interface Testimonial {
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { language } = useLanguage();
 
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        console.log('Fetching testimonials data...');
-        const { data, error } = await supabase
+        console.log('TestimonialsSection: Starting data fetch...');
+        setLoading(true);
+        setError(null);
+        
+        const { data, error: supabaseError } = await supabase
           .from('testimonials')
           .select('*')
           .order('order', { ascending: true });
           
-        if (error) {
-          console.error('Error fetching testimonials:', error);
+        console.log('TestimonialsSection: Supabase response:', { data, error: supabaseError });
+        
+        if (supabaseError) {
+          console.error('TestimonialsSection: Supabase error:', supabaseError);
+          setError(supabaseError.message);
           setTestimonials([]);
-          return;
-        }
-        
-        console.log('Testimonials data received:', data);
-        
-        if (data && data.length > 0) {
+        } else if (data && data.length > 0) {
+          console.log('TestimonialsSection: Setting testimonials data:', data);
           setTestimonials(data);
         } else {
-          console.log('No testimonials found in database, using fallback data');
+          console.log('TestimonialsSection: No testimonials found, using fallback data');
           // Use fallback data when no testimonials exist
-          setTestimonials([
+          const fallbackData = [
             {
               id: 'fallback-1',
               author: language === 'en' ? 'Music Fan' : 'אוהב מוזיקה',
@@ -60,18 +63,23 @@ const TestimonialsSection = () => {
                 : "מקצועיים, מוכשרים ובאמת משעשעים. מומלץ בחום!",
               order: 2
             }
-          ]);
+          ];
+          setTestimonials(fallbackData);
         }
       } catch (error) {
-        console.error('Error in fetchTestimonials:', error);
+        console.error('TestimonialsSection: Error in fetchTestimonials:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error occurred');
         setTestimonials([]);
       } finally {
+        console.log('TestimonialsSection: Setting loading to false');
         setLoading(false);
       }
     };
 
     fetchTestimonials();
   }, [language]);
+
+  console.log('TestimonialsSection: Current state:', { loading, testimonials: testimonials.length, error });
 
   const texts = {
     whatPeopleSay: language === 'en' ? 'WHAT PEOPLE SAY' : 'מה אנשים אומרים',
@@ -80,6 +88,7 @@ const TestimonialsSection = () => {
   };
 
   if (loading) {
+    console.log('TestimonialsSection: Rendering loading state');
     return (
       <section className="py-24 bg-gradient-to-b from-band-dark to-black">
         <div className="container mx-auto px-4">
@@ -102,7 +111,32 @@ const TestimonialsSection = () => {
     );
   }
 
+  if (error) {
+    console.log('TestimonialsSection: Rendering error state');
+    return (
+      <section className="py-24 bg-gradient-to-b from-band-dark to-black">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white text-glow">
+              {language === 'en' ? (
+                <>WHAT PEOPLE <span className="text-band-purple">SAY</span></>
+              ) : (
+                <>מה אנשים <span className="text-band-purple">אומרים</span></>
+              )}
+            </h2>
+            <div className="h-1 w-20 bg-band-purple mx-auto"></div>
+          </div>
+          <div className="text-center py-16">
+            <p className="text-red-400 mb-4">Error loading testimonials</p>
+            <p className="text-white/70">{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (testimonials.length === 0) {
+    console.log('TestimonialsSection: Rendering no data state');
     return (
       <section className="py-24 bg-gradient-to-b from-band-dark to-black">
         <div className="container mx-auto px-4">
@@ -124,6 +158,7 @@ const TestimonialsSection = () => {
     );
   }
 
+  console.log('TestimonialsSection: Rendering testimonials content');
   return (
     <section className="py-24 bg-gradient-to-b from-band-dark to-black">
       <div className="container mx-auto px-4">
