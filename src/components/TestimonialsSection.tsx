@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Quote } from "lucide-react";
@@ -24,18 +23,29 @@ const TestimonialsSection = () => {
     const fetchTestimonials = async () => {
       try {
         console.log('TestimonialsSection: Starting data fetch...');
+        console.log('TestimonialsSection: Supabase client status:', supabase ? 'Available' : 'Not available');
+        
         setLoading(true);
         setError(null);
+        
+        console.log('TestimonialsSection: About to call supabase.from("testimonials")...');
         
         const { data, error: supabaseError } = await supabase
           .from('testimonials')
           .select('*')
           .order('order', { ascending: true });
           
-        console.log('TestimonialsSection: Supabase response:', { data, error: supabaseError });
+        console.log('TestimonialsSection: Supabase query completed');
+        console.log('TestimonialsSection: Data received:', data);
+        console.log('TestimonialsSection: Error received:', supabaseError);
         
         if (supabaseError) {
-          console.error('TestimonialsSection: Supabase error:', supabaseError);
+          console.error('TestimonialsSection: Supabase error details:', {
+            message: supabaseError.message,
+            details: supabaseError.details,
+            hint: supabaseError.hint,
+            code: supabaseError.code
+          });
           setError(supabaseError.message);
           setTestimonials([]);
         } else if (data && data.length > 0) {
@@ -67,19 +77,27 @@ const TestimonialsSection = () => {
           setTestimonials(fallbackData);
         }
       } catch (error) {
-        console.error('TestimonialsSection: Error in fetchTestimonials:', error);
+        console.error('TestimonialsSection: Caught exception:', error);
+        console.error('TestimonialsSection: Exception type:', typeof error);
+        console.error('TestimonialsSection: Exception details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
         setError(error instanceof Error ? error.message : 'Unknown error occurred');
         setTestimonials([]);
       } finally {
-        console.log('TestimonialsSection: Setting loading to false');
+        console.log('TestimonialsSection: Entering finally block - setting loading to false');
         setLoading(false);
+        console.log('TestimonialsSection: Loading set to false');
       }
     };
 
+    console.log('TestimonialsSection: useEffect triggered, calling fetchTestimonials');
     fetchTestimonials();
   }, [language]);
 
-  console.log('TestimonialsSection: Current state:', { loading, testimonials: testimonials.length, error });
+  console.log('TestimonialsSection: Render - Current state:', { loading, testimonials: testimonials.length, error });
 
   const texts = {
     whatPeopleSay: language === 'en' ? 'WHAT PEOPLE SAY' : 'מה אנשים אומרים',

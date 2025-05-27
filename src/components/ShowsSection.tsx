@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,8 +48,12 @@ const ShowsSection = () => {
     const fetchShows = async () => {
       try {
         console.log('ShowsSection: Starting data fetch...');
+        console.log('ShowsSection: Supabase client status:', supabase ? 'Available' : 'Not available');
+        
         setLoading(true);
         setError(null);
+        
+        console.log('ShowsSection: About to call supabase.from("shows")...');
         
         // First try to get shows from Supabase
         const { data: supabaseData, error: supabaseError } = await supabase
@@ -58,10 +61,17 @@ const ShowsSection = () => {
           .select('*')
           .eq('is_published', true);
 
-        console.log('ShowsSection: Supabase response:', { data: supabaseData, error: supabaseError });
+        console.log('ShowsSection: Supabase query completed');
+        console.log('ShowsSection: Data received:', supabaseData);
+        console.log('ShowsSection: Error received:', supabaseError);
 
         if (supabaseError) {
-          console.error('ShowsSection: Supabase error:', supabaseError);
+          console.error('ShowsSection: Supabase error details:', {
+            message: supabaseError.message,
+            details: supabaseError.details,
+            hint: supabaseError.hint,
+            code: supabaseError.code
+          });
           throw supabaseError;
         }
         
@@ -97,14 +107,17 @@ const ShowsSection = () => {
           
           // Try to fetch from Google Sheets
           try {
+            console.log('ShowsSection: About to call supabase.functions.invoke...');
             const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
               'fetch-google-sheet'
             );
 
-            console.log('ShowsSection: Google Sheets response:', { data: googleSheetsData, error: functionError });
+            console.log('ShowsSection: Google Sheets response received');
+            console.log('ShowsSection: Google Sheets data:', googleSheetsData);
+            console.log('ShowsSection: Google Sheets error:', functionError);
 
             if (functionError) {
-              console.error('ShowsSection: Google Sheets error:', functionError);
+              console.error('ShowsSection: Google Sheets error details:', functionError);
               throw functionError;
             }
             
@@ -135,12 +148,18 @@ const ShowsSection = () => {
               setShows([]);
             }
           } catch (googleError) {
-            console.log('ShowsSection: Google Sheets fetch failed, setting empty shows array');
+            console.log('ShowsSection: Google Sheets fetch failed:', googleError);
             setShows([]);
           }
         }
       } catch (error: any) {
-        console.error('ShowsSection: Error fetching shows:', error);
+        console.error('ShowsSection: Caught exception:', error);
+        console.error('ShowsSection: Exception type:', typeof error);
+        console.error('ShowsSection: Exception details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
         setError(error.message || 'Failed to load shows');
         setShows([]);
         toast({
@@ -151,15 +170,17 @@ const ShowsSection = () => {
             : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
         });
       } finally {
-        console.log('ShowsSection: Setting loading to false');
+        console.log('ShowsSection: Entering finally block - setting loading to false');
         setLoading(false);
+        console.log('ShowsSection: Loading set to false');
       }
     };
 
+    console.log('ShowsSection: useEffect triggered, calling fetchShows');
     fetchShows();
   }, [language, toast]);
 
-  console.log('ShowsSection: Current state:', { loading, shows: shows.length, error });
+  console.log('ShowsSection: Render - Current state:', { loading, shows: shows.length, error });
 
   // Format the date for display
   const formatDate = (dateString: string) => {
