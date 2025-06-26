@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle, Settings } from "lucide-react";
+import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle, Settings, Sync } from "lucide-react";
 import { 
   Form,
   FormControl,
@@ -32,6 +32,7 @@ interface ShowData {
   venue: string;
   location: string;
   ticket_link: string;
+  image_url?: string;
   is_published?: boolean;
 }
 
@@ -41,6 +42,7 @@ const Admin = () => {
   const [editingShow, setEditingShow] = useState<ShowData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<ShowData>({
@@ -49,6 +51,7 @@ const Admin = () => {
       venue: '',
       location: '',
       ticket_link: '',
+      image_url: '',
       is_published: true
     }
   });
@@ -95,6 +98,7 @@ const Admin = () => {
         venue: editingShow.venue,
         location: editingShow.location,
         ticket_link: editingShow.ticket_link,
+        image_url: editingShow.image_url,
         is_published: editingShow.is_published
       });
     } else {
@@ -103,6 +107,7 @@ const Admin = () => {
         venue: '',
         location: '',
         ticket_link: '',
+        image_url: '',
         is_published: true
       });
     }
@@ -169,6 +174,74 @@ const Admin = () => {
     }
   };
 
+  const resyncWithGoogleSheet = async () => {
+    try {
+      setIsSyncing(true);
+      toast({
+        title: 'Syncing with Google Sheet',
+        description: "Fetching latest show data and updating database...",
+      });
+      
+      const { data, error } = await supabase.functions.invoke('fetch-google-sheet');
+      
+      if (error) throw error;
+      
+      if (!data.shows || !Array.isArray(data.shows)) {
+        throw new Error("Invalid data format from Google Sheet");
+      }
+      
+      let updatedCount = 0;
+      let addedCount = 0;
+      
+      for (const googleShow of data.shows) {
+        const { data: existingShows } = await supabase
+          .from('shows')
+          .select('*')
+          .eq('date', googleShow.date)
+          .eq('venue', googleShow.venue)
+          .eq('location', googleShow.location);
+          
+        if (existingShows && existingShows.length > 0) {
+          const existingShow = existingShows[0];
+          const { error: updateError } = await supabase
+            .from('shows')
+            .update({
+              ticket_link: googleShow.ticket_link,
+              image_url: googleShow.image_url,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingShow.id);
+            
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const { error: insertError } = await supabase
+            .from('shows')
+            .insert(googleShow);
+            
+          if (insertError) throw insertError;
+          addedCount++;
+        }
+      }
+      
+      await fetchShows();
+      
+      toast({
+        title: 'Sync Complete',
+        description: `Added ${addedCount} new shows and updated ${updatedCount} existing shows from Google Sheet.`,
+      });
+    } catch (error: any) {
+      console.error('Error syncing with Google Sheet:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: error.message || "Couldn't sync shows from Google Sheet.",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const onSubmit = async (data: ShowData) => {
     try {
       setIsSubmitting(true);
@@ -181,6 +254,7 @@ const Admin = () => {
             venue: data.venue,
             location: data.location,
             ticket_link: data.ticket_link,
+            image_url: data.image_url,
             is_published: data.is_published,
             updated_at: new Date().toISOString()
           })
@@ -200,6 +274,7 @@ const Admin = () => {
             venue: data.venue,
             location: data.location,
             ticket_link: data.ticket_link,
+            image_url: data.image_url,
             is_published: data.is_published
           });
           
@@ -312,7 +387,6 @@ const Admin = () => {
         <Tabs defaultValue="shows" className="w-full">
           <TabsList className="mb-8">
             <TabsTrigger value="shows">Shows Management</TabsTrigger>
-            {/* Add more tabs in the future like "Users", "Content", etc. */}
           </TabsList>
           
           <TabsContent value="shows">
@@ -381,6 +455,20 @@ const Admin = () => {
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={form.control}
+                        name="image_url"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Image URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://example.com/image.jpg" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
                       <FormField
                         control={form.control}
@@ -423,7 +511,7 @@ const Admin = () => {
                     </form>
                   </Form>
                   
-                  <div className="mt-6">
+                  <div className="mt-6 space-y-3">
                     <Button 
                       onClick={syncWithGoogleSheet} 
                       className="w-full bg-band-blue hover:bg-band-blue/80"
@@ -431,6 +519,18 @@ const Admin = () => {
                     >
                       {isSubmitting ? 'Syncing...' : 'Sync with Google Sheet'}
                     </Button>
+                    
+                    <Button 
+                      onClick={resyncWithGoogleSheet} 
+                      className="w-full bg-green-600 hover:bg-green-700 flex items-center justify-center"
+                      disabled={isSyncing}
+                    >
+                      <Sync className="mr-2 h-4 w-4" />
+                      {isSyncing ? 'Resyncing...' : 'Resync All Shows'}
+                    </Button>
+                    <p className="text-xs text-white/60 text-center">
+                      Resync will update existing shows and add new ones from Google Sheet
+                    </p>
                   </div>
                 </CardContent>
               </Card>
