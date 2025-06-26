@@ -47,14 +47,18 @@ const ShowsSection = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
+        console.log('Starting to fetch shows...');
         setLoading(true);
         setError(null);
         
         // Try to fetch from Supabase first
+        console.log('Fetching from Supabase...');
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
           .eq('is_published', true);
+
+        console.log('Supabase response:', { data: supabaseData, error: supabaseError });
 
         if (supabaseError) {
           console.error('Supabase error:', supabaseError);
@@ -63,6 +67,7 @@ const ShowsSection = () => {
         
         // If we have data in Supabase, use that
         if (supabaseData && supabaseData.length > 0) {
+          console.log('Found shows in Supabase:', supabaseData.length);
           // Get current date for filtering future shows
           const now = new Date();
           now.setHours(0, 0, 0, 0);
@@ -70,7 +75,9 @@ const ShowsSection = () => {
           // Filter and sort shows - show up to 6 upcoming shows instead of 3
           const futureShows = supabaseData.filter(show => {
             const showDate = parseDateString(show.date);
-            return showDate && showDate >= now;
+            const isFuture = showDate && showDate >= now;
+            console.log(`Show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
+            return isFuture;
           }).sort((a, b) => {
             const dateA = parseDateString(a.date);
             const dateB = parseDateString(b.date);
@@ -82,50 +89,70 @@ const ShowsSection = () => {
             return 0;
           });
           
+          console.log('Future shows found:', futureShows.length);
           // Show up to 6 upcoming shows instead of just 3
-          setShows(futureShows.slice(0, 6));
-        } else {
-          // Try Google Sheets fallback
-          try {
-            const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
-              'fetch-google-sheet'
-            );
+          const limitedShows = futureShows.slice(0, 6);
+          console.log('Setting shows:', limitedShows);
+          setShows(limitedShows);
+          setLoading(false);
+          return;
+        } 
+        
+        // If no data in Supabase, try Google Sheets fallback
+        console.log('No shows in Supabase, trying Google Sheets...');
+        try {
+          const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
+            'fetch-google-sheet'
+          );
 
-            if (functionError) throw functionError;
+          console.log('Google Sheets response:', { data: googleSheetsData, error: functionError });
+
+          if (functionError) {
+            console.error('Google Sheets function error:', functionError);
+            throw functionError;
+          }
+          
+          if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+            console.log('Found shows in Google Sheets:', googleSheetsData.shows.length);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
             
-            if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-              const now = new Date();
-              now.setHours(0, 0, 0, 0);
+            const futureShows = googleSheetsData.shows.filter((show: any) => {
+              const showDate = parseDateString(show.date);
+              const isFuture = showDate && showDate >= now;
+              console.log(`Google Sheet show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
+              return isFuture;
+            }).sort((a: any, b: any) => {
+              const dateA = parseDateString(a.date);
+              const dateB = parseDateString(b.date);
               
-              const futureShows = googleSheetsData.shows.filter((show: any) => {
-                const showDate = parseDateString(show.date);
-                return showDate && showDate >= now;
-              }).sort((a: any, b: any) => {
-                const dateA = parseDateString(a.date);
-                const dateB = parseDateString(b.date);
-                
-                if (dateA && dateB) {
-                  return dateA.getTime() - dateB.getTime();
-                }
-                
-                return 0;
-              });
+              if (dateA && dateB) {
+                return dateA.getTime() - dateB.getTime();
+              }
               
-              // Show up to 6 upcoming shows instead of just 3
-              setShows(futureShows.slice(0, 6));
-            } else {
-              setShows([]);
-            }
-          } catch (googleError) {
-            console.error('Google Sheets failed:', googleError);
+              return 0;
+            });
+            
+            console.log('Future Google Sheets shows:', futureShows.length);
+            // Show up to 6 upcoming shows instead of just 3
+            const limitedShows = futureShows.slice(0, 6);
+            console.log('Setting Google Sheets shows:', limitedShows);
+            setShows(limitedShows);
+          } else {
+            console.log('No shows found in Google Sheets');
             setShows([]);
           }
+        } catch (googleError) {
+          console.error('Google Sheets failed:', googleError);
+          setShows([]);
+          setError('Failed to load shows from both database and Google Sheets');
         }
       } catch (error: any) {
         console.error('Error fetching shows:', error);
         setError(error.message || 'Failed to load shows');
         setShows([]);
       } finally {
+        console.log('Fetch shows completed, setting loading to false');
         setLoading(false);
       }
     };
@@ -162,6 +189,8 @@ const ShowsSection = () => {
     viewAll: language === 'en' ? 'VIEW ALL SHOWS' : 'צפה בכל ההופעות',
     error: language === 'en' ? 'Error loading shows' : 'שגיאה בטעינת הופעות',
   };
+
+  console.log('Render state:', { loading, error, showsCount: shows.length });
 
   if (loading) {
     return (
@@ -240,7 +269,7 @@ const ShowsSection = () => {
             {language === 'en' ? (
               <>UPCOMING <span className="text-band-purple">SHOWS</span></>
             ) : (
-              <>הופעות <span className="text-band-purple">קרובות</span></>
+              <>הופעות <span className="text-band-purple">קرובות</span></>
             )}
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto"></div>
