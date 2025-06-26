@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +36,35 @@ function parseDateString(dateString: string): Date | null {
   }
 }
 
+// Add timeout wrapper for connection test
+const testBasicConnectionWithTimeout = async (timeoutMs: number = 5000): Promise<boolean> => {
+  return Promise.race([
+    (async () => {
+      try {
+        console.log('Testing basic Supabase connection with timeout...');
+        const { data, error } = await supabase.from('profiles').select('id').limit(1);
+        
+        if (error) {
+          console.error('Basic connection test failed with error:', error);
+          return false;
+        }
+        
+        console.log('Basic connection test successful');
+        return true;
+      } catch (error) {
+        console.error('Basic connection test threw an exception:', error);
+        return false;
+      }
+    })(),
+    new Promise<boolean>((resolve) => {
+      setTimeout(() => {
+        console.log('Connection test timed out');
+        resolve(false);
+      }, timeoutMs);
+    })
+  ]);
+};
+
 const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,8 +79,8 @@ const ShowsSection = () => {
         setLoading(true);
         setError(null);
         
-        // Try to fetch from Supabase first
-        console.log('Fetching from Supabase...');
+        // Skip connection test and go directly to fetching data
+        console.log('Fetching from Supabase directly...');
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
@@ -62,17 +90,14 @@ const ShowsSection = () => {
 
         if (supabaseError) {
           console.error('Supabase error:', supabaseError);
-          throw supabaseError;
-        }
-        
-        // If we have data in Supabase, use that
-        if (supabaseData && supabaseData.length > 0) {
+          // Don't throw error, try Google Sheets instead
+        } else if (supabaseData && supabaseData.length > 0) {
           console.log('Found shows in Supabase:', supabaseData.length);
           // Get current date for filtering future shows
           const now = new Date();
           now.setHours(0, 0, 0, 0);
           
-          // Filter and sort shows - show up to 6 upcoming shows instead of 3
+          // Filter and sort shows - show up to 6 upcoming shows
           const futureShows = supabaseData.filter(show => {
             const showDate = parseDateString(show.date);
             const isFuture = showDate && showDate >= now;
@@ -90,15 +115,14 @@ const ShowsSection = () => {
           });
           
           console.log('Future shows found:', futureShows.length);
-          // Show up to 6 upcoming shows instead of just 3
           const limitedShows = futureShows.slice(0, 6);
           console.log('Setting shows:', limitedShows);
           setShows(limitedShows);
           setLoading(false);
           return;
-        } 
+        }
         
-        // If no data in Supabase, try Google Sheets fallback
+        // Try Google Sheets fallback
         console.log('No shows in Supabase, trying Google Sheets...');
         try {
           const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
@@ -134,7 +158,6 @@ const ShowsSection = () => {
             });
             
             console.log('Future Google Sheets shows:', futureShows.length);
-            // Show up to 6 upcoming shows instead of just 3
             const limitedShows = futureShows.slice(0, 6);
             console.log('Setting Google Sheets shows:', limitedShows);
             setShows(limitedShows);
@@ -208,7 +231,7 @@ const ShowsSection = () => {
           </div>
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">{texts.loading}</p>
+            <p className="mt-4 text-white/70">{language === 'en' ? 'Loading shows...' : 'טוען הופעות...'}</p>
           </div>
         </div>
       </section>
@@ -269,7 +292,7 @@ const ShowsSection = () => {
             {language === 'en' ? (
               <>UPCOMING <span className="text-band-purple">SHOWS</span></>
             ) : (
-              <>הופעות <span className="text-band-purple">קرובות</span></>
+              <>הופעות <span className="text-band-purple">קרובות</span></>
             )}
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto"></div>
