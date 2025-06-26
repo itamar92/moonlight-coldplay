@@ -82,7 +82,7 @@ serve(async (req) => {
     }
     
     // Transform Google Sheets data to match our shows format
-    // No longer filtering out past events, only filtering private events
+    // Only filter out private events, NOT past events - let the frontend handle date filtering
     const shows = data.values
       .filter(row => {
         // Log each row for debugging
@@ -93,7 +93,7 @@ serve(async (req) => {
           return false; // Skip rows with missing essential data
         }
         
-        // Filter out private events
+        // Only filter out private events - DO NOT filter by date here
         const isPrivate = (row[5] || "").toLowerCase() === "true";
         if (isPrivate) {
           console.log("Skipping private event");
@@ -109,7 +109,7 @@ serve(async (req) => {
         is_published: true
       }));
 
-    console.log(`Filtered to ${shows.length} valid shows`);
+    console.log(`Filtered to ${shows.length} valid shows (including all dates)`);
     console.log("Final shows data:", JSON.stringify(shows));
     
     return new Response(JSON.stringify({ shows }), {

@@ -50,7 +50,7 @@ const ShowsSection = () => {
         setLoading(true);
         setError(null);
         
-        // Try to fetch from Supabase with a shorter timeout
+        // Try to fetch from Supabase first
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
@@ -67,7 +67,7 @@ const ShowsSection = () => {
           const now = new Date();
           now.setHours(0, 0, 0, 0);
           
-          // Filter and sort shows
+          // Filter and sort shows - show up to 6 upcoming shows instead of 3
           const futureShows = supabaseData.filter(show => {
             const showDate = parseDateString(show.date);
             return showDate && showDate >= now;
@@ -82,7 +82,8 @@ const ShowsSection = () => {
             return 0;
           });
           
-          setShows(futureShows.slice(0, 3));
+          // Show up to 6 upcoming shows instead of just 3
+          setShows(futureShows.slice(0, 6));
         } else {
           // Try Google Sheets fallback
           try {
@@ -110,7 +111,8 @@ const ShowsSection = () => {
                 return 0;
               });
               
-              setShows(futureShows.slice(0, 3));
+              // Show up to 6 upcoming shows instead of just 3
+              setShows(futureShows.slice(0, 6));
             } else {
               setShows([]);
             }
