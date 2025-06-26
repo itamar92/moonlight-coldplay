@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,35 +37,6 @@ function parseDateString(dateString: string): Date | null {
   }
 }
 
-// Add timeout wrapper for connection test
-const testBasicConnectionWithTimeout = async (timeoutMs: number = 5000): Promise<boolean> => {
-  return Promise.race([
-    (async () => {
-      try {
-        console.log('Testing basic Supabase connection with timeout...');
-        const { data, error } = await supabase.from('profiles').select('id').limit(1);
-        
-        if (error) {
-          console.error('Basic connection test failed with error:', error);
-          return false;
-        }
-        
-        console.log('Basic connection test successful');
-        return true;
-      } catch (error) {
-        console.error('Basic connection test threw an exception:', error);
-        return false;
-      }
-    })(),
-    new Promise<boolean>((resolve) => {
-      setTimeout(() => {
-        console.log('Connection test timed out');
-        resolve(false);
-      }, timeoutMs);
-    })
-  ]);
-};
-
 const ShowsSection = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,8 +51,8 @@ const ShowsSection = () => {
         setLoading(true);
         setError(null);
         
-        // Skip connection test and go directly to fetching data
-        console.log('Fetching from Supabase directly...');
+        // Direct fetch from Supabase without connection test
+        console.log('Fetching shows from Supabase...');
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
           .select('*')
@@ -90,98 +62,75 @@ const ShowsSection = () => {
 
         if (supabaseError) {
           console.error('Supabase error:', supabaseError);
-          // Don't throw error, try Google Sheets instead
+          // Continue to Google Sheets fallback
         } else if (supabaseData && supabaseData.length > 0) {
           console.log('Found shows in Supabase:', supabaseData.length);
-          // Get current date for filtering future shows
-          const now = new Date();
-          now.setHours(0, 0, 0, 0);
-          
-          // Filter and sort shows - show up to 6 upcoming shows
-          const futureShows = supabaseData.filter(show => {
-            const showDate = parseDateString(show.date);
-            const isFuture = showDate && showDate >= now;
-            console.log(`Show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
-            return isFuture;
-          }).sort((a, b) => {
-            const dateA = parseDateString(a.date);
-            const dateB = parseDateString(b.date);
-            
-            if (dateA && dateB) {
-              return dateA.getTime() - dateB.getTime();
-            }
-            
-            return 0;
-          });
-          
-          console.log('Future shows found:', futureShows.length);
-          const limitedShows = futureShows.slice(0, 6);
-          console.log('Setting shows:', limitedShows);
-          setShows(limitedShows);
+          const processedShows = processShows(supabaseData);
+          console.log('Setting processed shows:', processedShows);
+          setShows(processedShows);
           setLoading(false);
           return;
         }
         
         // Try Google Sheets fallback
-        console.log('No shows in Supabase, trying Google Sheets...');
-        try {
-          const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
-            'fetch-google-sheet'
-          );
+        console.log('Trying Google Sheets fallback...');
+        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
+          'fetch-google-sheet'
+        );
 
-          console.log('Google Sheets response:', { data: googleSheetsData, error: functionError });
+        console.log('Google Sheets response:', { data: googleSheetsData, error: functionError });
 
-          if (functionError) {
-            console.error('Google Sheets function error:', functionError);
-            throw functionError;
-          }
-          
-          if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-            console.log('Found shows in Google Sheets:', googleSheetsData.shows.length);
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            
-            const futureShows = googleSheetsData.shows.filter((show: any) => {
-              const showDate = parseDateString(show.date);
-              const isFuture = showDate && showDate >= now;
-              console.log(`Google Sheet show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
-              return isFuture;
-            }).sort((a: any, b: any) => {
-              const dateA = parseDateString(a.date);
-              const dateB = parseDateString(b.date);
-              
-              if (dateA && dateB) {
-                return dateA.getTime() - dateB.getTime();
-              }
-              
-              return 0;
-            });
-            
-            console.log('Future Google Sheets shows:', futureShows.length);
-            const limitedShows = futureShows.slice(0, 6);
-            console.log('Setting Google Sheets shows:', limitedShows);
-            setShows(limitedShows);
-          } else {
-            console.log('No shows found in Google Sheets');
-            setShows([]);
-          }
-        } catch (googleError) {
-          console.error('Google Sheets failed:', googleError);
+        if (functionError) {
+          console.error('Google Sheets function error:', functionError);
+          throw new Error('Failed to load shows from both sources');
+        }
+        
+        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
+          console.log('Found shows in Google Sheets:', googleSheetsData.shows.length);
+          const processedShows = processShows(googleSheetsData.shows);
+          console.log('Setting Google Sheets shows:', processedShows);
+          setShows(processedShows);
+        } else {
+          console.log('No shows found in any source');
           setShows([]);
-          setError('Failed to load shows from both database and Google Sheets');
         }
       } catch (error: any) {
         console.error('Error fetching shows:', error);
         setError(error.message || 'Failed to load shows');
         setShows([]);
       } finally {
-        console.log('Fetch shows completed, setting loading to false');
+        console.log('Fetch completed, setting loading to false');
         setLoading(false);
       }
     };
 
     fetchShows();
   }, [language]);
+
+  // Helper function to process and filter shows
+  const processShows = (rawShows: any[]) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const futureShows = rawShows.filter(show => {
+      const showDate = parseDateString(show.date);
+      const isFuture = showDate && showDate >= now;
+      console.log(`Show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
+      return isFuture;
+    }).sort((a, b) => {
+      const dateA = parseDateString(a.date);
+      const dateB = parseDateString(b.date);
+      
+      if (dateA && dateB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      
+      return 0;
+    });
+    
+    console.log('Future shows found:', futureShows.length);
+    return futureShows.slice(0, 6);
+  };
 
   // Format the date for display
   const formatDate = (dateString: string) => {
@@ -231,7 +180,7 @@ const ShowsSection = () => {
           </div>
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-4 text-white/70">{language === 'en' ? 'Loading shows...' : 'טוען הופעות...'}</p>
+            <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
         </div>
       </section>
