@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
@@ -5,130 +6,46 @@ import ShowsSection from '../components/ShowsSection';
 import MediaSection from '../components/MediaSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import { supabase, checkSupabaseConnection, testBasicConnection, testDataAccess } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Database } from 'lucide-react';
 
 const Index = () => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
   const [hasConnectionError, setHasConnectionError] = useState(false);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
-  // Only run once when the app initializes to check connection and admin user
+  // Simplified initialization - just check if we can connect without blocking the UI
   useEffect(() => {
-    const initialize = async () => {
+    const checkConnection = async () => {
       try {
-        setIsLoading(true);
-        
-        // Test basic connection first
-        console.log('Testing basic Supabase connection...');
-        const basicConnectionTest = await testBasicConnection();
-        console.log('Basic connection test result:', basicConnectionTest);
-        
-        if (!basicConnectionTest) {
-          console.error('Basic connection test failed');
-          setHasConnectionError(true);
-          toast({
-            variant: 'destructive',
-            title: 'Connection Error',
-            description: 'Failed to connect to the database. Default content is being displayed.'
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Test data access to see if we can retrieve data from tables
-        await testDataAccess();
-        
-        // Then proceed with the regular connection check
-        const isConnected = await checkSupabaseConnection(4, 1000);
-        setConnectionAttempts(prev => prev + 1);
-        
-        if (!isConnected) {
-          console.error('Failed to connect to the database after multiple attempts');
-          setHasConnectionError(true);
-          toast({
-            variant: 'destructive',
-            title: 'Connection Error',
-            description: 'Failed to connect to the database. Default content is being displayed.'
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Connection successful, proceed with checks
-        const { data, error } = await supabase.auth.getSession();
+        // Simple, non-blocking connection test
+        const { error } = await supabase.from('shows').select('count', { count: 'exact', head: true });
         
         if (error) {
-          console.error('Error checking session:', error);
-          return;
+          console.log('Database connection issue detected:', error);
+          setHasConnectionError(true);
+          toast({
+            variant: 'destructive',
+            title: 'Connection Warning',
+            description: 'Some features may not work properly due to database connection issues.',
+          });
         }
-        
-        const session = data.session;
-        
-        if (session) {
-          console.log('User is already logged in');
-          return;
-        }
-        
-        // Check if the admin user exists in profiles table
-        const { data: existingAdmins, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('is_admin', true)
-          .limit(1);
-          
-        if (profileError) {
-          console.error('Error checking for admin users:', profileError);
-          return;
-        }
-        
-        if (existingAdmins && existingAdmins.length > 0) {
-          console.log('Admin user already exists in profiles');
-          return;
-        }
-        
-        // Only proceed with checking if no admin exists
-        console.log('No admin found in profiles, but not creating one automatically');
       } catch (error) {
-        console.error('Error in initialization:', error);
+        console.log('Connection check failed:', error);
         setHasConnectionError(true);
-        toast({
-          variant: 'destructive',
-          title: 'Initialization Error',
-          description: 'There was a problem initializing the application.'
-        });
-      } finally {
-        setIsLoading(false);
       }
     };
-    
-    initialize();
-  }, [toast, connectionAttempts]);
 
-  // Try to reconnect periodically if there's a connection error
-  useEffect(() => {
-    let reconnectTimer: number | undefined;
+    // Run connection check after a short delay to not block initial render
+    const timer = setTimeout(checkConnection, 1000);
     
-    if (hasConnectionError && connectionAttempts < 3) {
-      reconnectTimer = window.setTimeout(() => {
-        setConnectionAttempts(prev => prev + 1);
-      }, 5000); // Try reconnecting every 5 seconds up to 3 total attempts
-    }
-    
-    return () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-    };
-  }, [hasConnectionError, connectionAttempts]);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-band-dark text-white">
       {hasConnectionError && (
-        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
-          Database connection failed. Showing default content instead.
+        <div className="fixed top-0 left-0 right-0 bg-yellow-500/90 text-black p-2 text-center z-50 text-sm">
+          Some features may be limited due to connectivity issues.
         </div>
       )}
       <Navbar />
