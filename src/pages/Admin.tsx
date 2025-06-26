@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle, Settings, Sync } from "lucide-react";
+import { Calendar, Edit, MapPin, MoreHorizontal, Trash2, ExternalLink, CheckCircle, XCircle, Settings, RefreshCw } from "lucide-react";
 import { 
   Form,
   FormControl,
@@ -525,7 +525,7 @@ const Admin = () => {
                       className="w-full bg-green-600 hover:bg-green-700 flex items-center justify-center"
                       disabled={isSyncing}
                     >
-                      <Sync className="mr-2 h-4 w-4" />
+                      <RefreshCw className="mr-2 h-4 w-4" />
                       {isSyncing ? 'Resyncing...' : 'Resync All Shows'}
                     </Button>
                     <p className="text-xs text-white/60 text-center">
