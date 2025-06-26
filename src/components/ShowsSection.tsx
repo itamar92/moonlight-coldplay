@@ -51,7 +51,7 @@ const ShowsSection = () => {
         setLoading(true);
         setError(null);
         
-        // Direct fetch from Supabase without connection test
+        // Direct fetch from Supabase
         console.log('Fetching shows from Supabase...');
         const { data: supabaseData, error: supabaseError } = await supabase
           .from('shows')
@@ -66,7 +66,7 @@ const ShowsSection = () => {
         } else if (supabaseData && supabaseData.length > 0) {
           console.log('Found shows in Supabase:', supabaseData.length);
           const processedShows = processShows(supabaseData);
-          console.log('Setting processed shows:', processedShows);
+          console.log('Processed shows (after filtering):', processedShows.length);
           setShows(processedShows);
           setLoading(false);
           return;
@@ -88,7 +88,7 @@ const ShowsSection = () => {
         if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
           console.log('Found shows in Google Sheets:', googleSheetsData.shows.length);
           const processedShows = processShows(googleSheetsData.shows);
-          console.log('Setting Google Sheets shows:', processedShows);
+          console.log('Processed Google Sheets shows (after filtering):', processedShows.length);
           setShows(processedShows);
         } else {
           console.log('No shows found in any source');
@@ -111,11 +111,12 @@ const ShowsSection = () => {
   const processShows = (rawShows: any[]) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
+    console.log('Current date for comparison:', now.toISOString());
     
     const futureShows = rawShows.filter(show => {
       const showDate = parseDateString(show.date);
       const isFuture = showDate && showDate >= now;
-      console.log(`Show ${show.venue} on ${show.date}: showDate=${showDate}, isFuture=${isFuture}`);
+      console.log(`Show "${show.venue}" on ${show.date}: showDate=${showDate?.toISOString()}, isFuture=${isFuture}`);
       return isFuture;
     }).sort((a, b) => {
       const dateA = parseDateString(a.date);
@@ -129,6 +130,23 @@ const ShowsSection = () => {
     });
     
     console.log('Future shows found:', futureShows.length);
+    
+    // If no future shows, let's also check for recent shows (last 30 days) for debugging
+    if (futureShows.length === 0) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      
+      const recentShows = rawShows.filter(show => {
+        const showDate = parseDateString(show.date);
+        const isRecent = showDate && showDate >= thirtyDaysAgo;
+        console.log(`Recent check - Show "${show.venue}" on ${show.date}: showDate=${showDate?.toISOString()}, isRecent=${isRecent}`);
+        return isRecent;
+      });
+      
+      console.log('Recent shows (last 30 days):', recentShows.length);
+    }
+    
     return futureShows.slice(0, 6);
   };
 
@@ -219,7 +237,7 @@ const ShowsSection = () => {
               {language === 'en' ? (
                 <>UPCOMING <span className="text-band-purple">SHOWS</span></>
               ) : (
-                <>הופעות <span className="text-band-purple">קרובות</span></>
+                <>הופעות <span className="text-band-purple">קrובות</span></>
               )}
             </h2>
             <div className="h-1 w-20 bg-band-purple mx-auto"></div>
@@ -241,7 +259,7 @@ const ShowsSection = () => {
             {language === 'en' ? (
               <>UPCOMING <span className="text-band-purple">SHOWS</span></>
             ) : (
-              <>הופעות <span className="text-band-purple">קרובות</span></>
+              <>הופעות <span className="text-band-purple">קrובות</span></>
             )}
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto"></div>
