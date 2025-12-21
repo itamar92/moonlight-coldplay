@@ -25,34 +25,20 @@ const MediaSection = () => {
   useEffect(() => {
     const fetchMedia = async () => {
       try {
-        const { data, error } = await supabase
-          .from('media')
-          .select('*')
-          .order('order', { ascending: true });
-          
-        if (error) {
-          console.error('Error fetching media:', error);
-          // Use default data on error
-          setPhotos(getDefaultPhotos());
-          setVideos(getDefaultVideos());
-        } else if (data && data.length > 0) {
-          const photosData = data.filter(item => item.type === 'photo').map(item => ({
-            ...item,
-            type: 'photo' as const
-          }));
-          
-          const videosData = data.filter(item => item.type === 'video').map(item => ({
-            ...item,
-            type: 'video' as const
-          }));
-          
-          setPhotos(photosData.length > 0 ? photosData : getDefaultPhotos());
-          setVideos(videosData.length > 0 ? videosData : getDefaultVideos());
-        } else {
-          // Use default data when no media exists
-          setPhotos(getDefaultPhotos());
-          setVideos(getDefaultVideos());
+        // Google Sheets is now the source of truth for media
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-media-sheet');
+
+        if (functionError) {
+          throw functionError;
         }
+
+        const items: MediaItem[] = functionData?.media ?? [];
+
+        const photosData = items.filter((item) => item.type === 'photo');
+        const videosData = items.filter((item) => item.type === 'video');
+
+        setPhotos(photosData.length > 0 ? photosData : getDefaultPhotos());
+        setVideos(videosData.length > 0 ? videosData : getDefaultVideos());
       } catch (error) {
         console.error('Error in media fetch:', error);
         setPhotos(getDefaultPhotos());
@@ -61,7 +47,7 @@ const MediaSection = () => {
         setLoading(false);
       }
     };
-    
+
     fetchMedia();
   }, []);
 

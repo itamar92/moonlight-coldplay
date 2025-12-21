@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface FooterTranslations {
@@ -64,38 +63,39 @@ const FooterSection = () => {
     const fetchFooterData = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from('content')
-          .select('content')
-          .eq('section', 'footer')
-          .single();
 
-        if (error) {
-          if (error.code !== 'PGRST116') { // "Not found" error
-            console.error('Error fetching footer data:', error);
-          }
-          // If not found, we'll use the default values
-          return;
-        }
+        // Google Sheets is now the source of truth for content
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-content-sheet');
+        if (functionError) throw functionError;
 
-        if (data?.content) {
-          // Properly type cast the JSON data to FooterData
-          const parsedData = data.content as Record<string, any>;
-          setFooterData({
-            companyName: parsedData.companyName || defaultFooterData.companyName,
-            description: parsedData.description || defaultFooterData.description,
-            email: parsedData.email || defaultFooterData.email,
-            phone: parsedData.phone || defaultFooterData.phone,
-            location: parsedData.location || defaultFooterData.location,
-            socialLinks: {
-              facebook: parsedData.socialLinks?.facebook || defaultFooterData.socialLinks.facebook,
-              instagram: parsedData.socialLinks?.instagram || defaultFooterData.socialLinks.instagram,
-              twitter: parsedData.socialLinks?.twitter || defaultFooterData.socialLinks.twitter,
-              youtube: parsedData.socialLinks?.youtube || defaultFooterData.socialLinks.youtube
+        const footer = functionData?.content?.footer;
+        if (!footer) return;
+
+        const parsed: FooterData = {
+          companyName: footer.companyName?.en || defaultFooterData.companyName,
+          description: footer.description?.en || defaultFooterData.description,
+          email: footer.email?.en || defaultFooterData.email,
+          phone: footer.phone?.en || defaultFooterData.phone,
+          location: footer.location?.en || defaultFooterData.location,
+          socialLinks: {
+            facebook: footer.facebook?.en || defaultFooterData.socialLinks.facebook,
+            instagram: footer.instagram?.en || defaultFooterData.socialLinks.instagram,
+            twitter: footer.twitter?.en || defaultFooterData.socialLinks.twitter,
+            youtube: footer.youtube?.en || defaultFooterData.socialLinks.youtube,
+          },
+          translations: {
+            en: {
+              companyName: footer.companyName?.en || defaultFooterData.translations?.en.companyName || defaultFooterData.companyName,
+              description: footer.description?.en || defaultFooterData.translations?.en.description || defaultFooterData.description,
             },
-            translations: parsedData.translations || defaultFooterData.translations
-          });
-        }
+            he: {
+              companyName: footer.companyName?.he || defaultFooterData.translations?.he.companyName || defaultFooterData.companyName,
+              description: footer.description?.he || defaultFooterData.translations?.he.description || defaultFooterData.description,
+            },
+          },
+        };
+
+        setFooterData(parsed);
       } catch (error) {
         console.error('Error fetching footer data:', error);
       } finally {

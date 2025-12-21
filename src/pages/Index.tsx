@@ -13,20 +13,19 @@ const Index = () => {
   const { toast } = useToast();
   const [hasConnectionError, setHasConnectionError] = useState(false);
 
-  // Simplified initialization - just check if we can connect without blocking the UI
+  // Non-blocking connection test (Google Sheets edge function)
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        // Simple, non-blocking connection test
-        const { error } = await supabase.from('shows').select('count', { count: 'exact', head: true });
-        
+        const { error } = await supabase.functions.invoke('fetch-google-sheet');
+
         if (error) {
-          console.log('Database connection issue detected:', error);
+          console.log('Sheets connection issue detected:', error);
           setHasConnectionError(true);
           toast({
             variant: 'destructive',
             title: 'Connection Warning',
-            description: 'Some features may not work properly due to database connection issues.',
+            description: 'Some features may not work properly due to connectivity issues.',
           });
         }
       } catch (error) {
@@ -35,9 +34,7 @@ const Index = () => {
       }
     };
 
-    // Run connection check after a short delay to not block initial render
     const timer = setTimeout(checkConnection, 1000);
-    
     return () => clearTimeout(timer);
   }, [toast]);
 
