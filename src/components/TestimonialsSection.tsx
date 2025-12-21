@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Quote } from "lucide-react";
@@ -22,20 +21,25 @@ const TestimonialsSection = () => {
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        const { data, error } = await supabase
-          .from('testimonials')
-          .select('*')
-          .order('order', { ascending: true });
-
-        if (error) {
-          console.error('Supabase error:', error);
-          // Use fallback data on error
-          setTestimonials(getFallbackData());
-        } else if (data && data.length > 0) {
-          setTestimonials(data);
+        // Try fetching from Google Sheets edge function first
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-testimonials-sheet');
+        
+        if (!functionError && functionData?.testimonials?.length > 0) {
+          console.log('Loaded testimonials from Google Sheets');
+          setTestimonials(functionData.testimonials);
         } else {
-          // Use fallback data when no testimonials exist
-          setTestimonials(getFallbackData());
+          // Fallback to Supabase if edge function fails
+          console.log('Falling back to Supabase for testimonials');
+          const { data, error } = await supabase
+            .from('testimonials')
+            .select('*')
+            .order('order', { ascending: true });
+
+          if (error || !data || data.length === 0) {
+            setTestimonials(getFallbackData());
+          } else {
+            setTestimonials(data);
+          }
         }
       } catch (error) {
         console.error('Error fetching testimonials:', error);
