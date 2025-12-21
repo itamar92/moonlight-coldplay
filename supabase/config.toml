@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.fetch-testimonials-sheet]
 verify_jwt = false
+
+[functions.fetch-media-sheet]
+verify_jwt = false
+
+[functions.fetch-content-sheet]
+verify_jwt = false

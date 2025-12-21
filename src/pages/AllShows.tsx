@@ -17,20 +17,23 @@ interface Show {
   image_url?: string;
 }
 
-// Parse a date string in dd/MM/yyyy format to a Date object
+// Parse a date string in dd/MM/yyyy or dd/MM/yy format to a Date object
 function parseDateString(dateString: string): Date | null {
   try {
-    if (dateString.includes('/')) {
-      const [day, month, year] = dateString.split('/');
+    const trimmed = dateString?.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.includes('/')) {
+      const [dayRaw, monthRaw, yearRaw] = trimmed.split('/');
+      const day = dayRaw?.padStart(2, '0');
+      const month = monthRaw?.padStart(2, '0');
+      const year = yearRaw?.length === 2 ? `20${yearRaw}` : yearRaw;
+
       const parsedDate = new Date(`${year}-${month}-${day}`);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
-      }
+      return !isNaN(parsedDate.getTime()) ? parsedDate : null;
     }
-    
-    // Fallback to standard date parsing
-    const date = new Date(dateString);
+
+    const date = new Date(trimmed);
     return !isNaN(date.getTime()) ? date : null;
   } catch (e) {
     console.error('Error parsing date:', dateString, e);
@@ -47,66 +50,31 @@ const AllShows = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        // First try to get shows from Supabase
-        const { data: supabaseData, error: supabaseError } = await supabase
-          .from('shows')
-          .select('*')
-          .eq('is_published', true);
-
-        if (supabaseError) throw supabaseError;
-        
-        // If we have data in Supabase, use that
-        if (supabaseData && supabaseData.length > 0) {
-          // Sort shows by date chronologically
-          const sortedShows = supabaseData.sort((a, b) => {
-            const dateA = parseDateString(a.date);
-            const dateB = parseDateString(b.date);
-            
-            if (dateA && dateB) {
-              return dateA.getTime() - dateB.getTime();
-            }
-            
-            return 0;
-          });
-          
-          setShows(sortedShows);
-          setLoading(false);
-          return;
-        }
-        
-        // If no data in Supabase, try to fetch from Google Sheets
+        // Google Sheets is now the source of truth for shows
         const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
           'fetch-google-sheet'
         );
 
         if (functionError) throw functionError;
-        
-        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-          // Sort shows from Google Sheets by date chronologically
-          const sortedShows = googleSheetsData.shows.sort((a: any, b: any) => {
-            const dateA = parseDateString(a.date);
-            const dateB = parseDateString(b.date);
-            
-            if (dateA && dateB) {
-              return dateA.getTime() - dateB.getTime();
-            }
-            
-            return 0;
-          });
-          
-          setShows(sortedShows);
-        } else {
-          // No shows found in either Supabase or Google Sheets
-          setShows([]);
-        }
+
+        const rawShows = googleSheetsData?.shows ?? [];
+        const sortedShows = rawShows.sort((a: any, b: any) => {
+          const dateA = parseDateString(a.date);
+          const dateB = parseDateString(b.date);
+
+          if (dateA && dateB) return dateA.getTime() - dateB.getTime();
+          return 0;
+        });
+
+        setShows(sortedShows);
       } catch (error: any) {
         console.error('Error fetching shows:', error);
         toast({
           variant: 'destructive',
           title: language === 'en' ? 'Error fetching shows' : 'שגיאה בטעינת הופעות',
           description: language === 'en'
-            ? "Couldn't load upcoming shows. Please try again later."
-            : "לא ניתן לטעון הופעות קרובות. אנא נסה שוב מאוחר יותר.",
+            ? "Couldn't load shows. Please try again later."
+            : "לא ניתן לטעון הופעות. אנא נסה שוב מאוחר יותר.",
         });
       } finally {
         setLoading(false);

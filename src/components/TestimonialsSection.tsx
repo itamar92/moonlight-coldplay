@@ -21,25 +21,13 @@ const TestimonialsSection = () => {
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        // Try fetching from Google Sheets edge function first
+        // Google Sheets is now the source of truth for testimonials
         const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-testimonials-sheet');
-        
+
         if (!functionError && functionData?.testimonials?.length > 0) {
-          console.log('Loaded testimonials from Google Sheets');
           setTestimonials(functionData.testimonials);
         } else {
-          // Fallback to Supabase if edge function fails
-          console.log('Falling back to Supabase for testimonials');
-          const { data, error } = await supabase
-            .from('testimonials')
-            .select('*')
-            .order('order', { ascending: true });
-
-          if (error || !data || data.length === 0) {
-            setTestimonials(getFallbackData());
-          } else {
-            setTestimonials(data);
-          }
+          setTestimonials(getFallbackData());
         }
       } catch (error) {
         console.error('Error fetching testimonials:', error);

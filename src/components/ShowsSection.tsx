@@ -17,22 +17,28 @@ interface Show {
   image_url?: string;
 }
 
-// Parse a date string in dd/MM/yyyy format to a Date object
+// Parse a date string in dd/MM/yyyy or dd/MM/yy format to a Date object
 function parseDateString(dateString: string): Date | null {
   try {
-    if (dateString.includes('/')) {
-      const [day, month, year] = dateString.split('/');
+    const trimmed = dateString?.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.includes('/')) {
+      const [dayRaw, monthRaw, yearRaw] = trimmed.split('/');
+      const day = dayRaw?.padStart(2, '0');
+      const month = monthRaw?.padStart(2, '0');
+
+      // support both yyyy and yy
+      const year = yearRaw?.length === 2 ? `20${yearRaw}` : yearRaw;
+
       const parsedDate = new Date(`${year}-${month}-${day}`);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
-      }
+      return !isNaN(parsedDate.getTime()) ? parsedDate : null;
     }
-    
+
     // Fallback to standard date parsing
-    const date = new Date(dateString);
+    const date = new Date(trimmed);
     return !isNaN(date.getTime()) ? date : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -47,59 +53,26 @@ const ShowsSection = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        console.log('Starting to fetch shows...');
         setLoading(true);
         setError(null);
-        
-        // Direct fetch from Supabase
-        console.log('Fetching shows from Supabase...');
-        const { data: supabaseData, error: supabaseError } = await supabase
-          .from('shows')
-          .select('*')
-          .eq('is_published', true);
 
-        console.log('Supabase response:', { data: supabaseData, error: supabaseError });
-
-        if (supabaseError) {
-          console.error('Supabase error:', supabaseError);
-          // Continue to Google Sheets fallback
-        } else if (supabaseData && supabaseData.length > 0) {
-          console.log('Found shows in Supabase:', supabaseData.length);
-          const processedShows = processShows(supabaseData);
-          console.log('Processed shows (after filtering):', processedShows.length);
-          setShows(processedShows);
-          setLoading(false);
-          return;
-        }
-        
-        // Try Google Sheets fallback
-        console.log('Trying Google Sheets fallback...');
+        // Google Sheets is now the source of truth for shows
         const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
           'fetch-google-sheet'
         );
 
-        console.log('Google Sheets response:', { data: googleSheetsData, error: functionError });
-
         if (functionError) {
-          console.error('Google Sheets function error:', functionError);
-          throw new Error('Failed to load shows from both sources');
+          throw new Error(functionError.message || 'Failed to load shows from Google Sheets');
         }
-        
-        if (googleSheetsData && googleSheetsData.shows && googleSheetsData.shows.length > 0) {
-          console.log('Found shows in Google Sheets:', googleSheetsData.shows.length);
-          const processedShows = processShows(googleSheetsData.shows);
-          console.log('Processed Google Sheets shows (after filtering):', processedShows.length);
-          setShows(processedShows);
-        } else {
-          console.log('No shows found in any source');
-          setShows([]);
-        }
+
+        const rawShows = googleSheetsData?.shows ?? [];
+        const processedShows = rawShows.length > 0 ? processShows(rawShows) : [];
+        setShows(processedShows);
       } catch (error: any) {
         console.error('Error fetching shows:', error);
-        setError(error.message || 'Failed to load shows');
+        setError(error?.message || 'Failed to load shows');
         setShows([]);
       } finally {
-        console.log('Fetch completed, setting loading to false');
         setLoading(false);
       }
     };
