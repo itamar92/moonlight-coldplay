@@ -1,1 +1,7 @@
 project_id = "paqlcflzhjpgvlgcfrfj"
+
+[functions.fetch-google-sheet]
+verify_jwt = false
+
+[functions.fetch-testimonials-sheet]
+verify_jwt = false
