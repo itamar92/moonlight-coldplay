@@ -9,7 +9,9 @@ const DiagnosticsPage = () => {
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
-  
+
+  const supabaseUrl = (supabase as any)?.supabaseUrl as string | undefined;
+
   useEffect(() => {
     // Check connection on page load
     testBasicConnection();
@@ -32,7 +34,11 @@ const DiagnosticsPage = () => {
       addResult(`${name} - Completed in ${(endTime - startTime).toFixed(2)}ms`, result);
       return result;
     } catch (error) {
-      addResult(`${name} - Error`, error);
+      addResult(`${name} - Error`, {
+        name: (error as any)?.name,
+        message: (error as any)?.message,
+        stack: (error as any)?.stack,
+      });
       return null;
     }
   };
@@ -42,21 +48,21 @@ const DiagnosticsPage = () => {
     try {
       const result = await runTest('Basic Connection Test', async () => {
         console.log('Testing basic Supabase connection in diagnostics...');
-        
+
         // Try a simple query that should always work if the connection is valid
         const { data, error } = await supabase.from('profiles').select('id').limit(1);
-        
+
         if (error) {
           console.error('Basic connection test failed with error:', error);
           setConnectionStatus('disconnected');
           return { success: false, error };
         }
-        
+
         console.log('Basic connection test successful, data received:', data);
         setConnectionStatus('connected');
         return { success: true, data };
       });
-      
+
       return result?.success === true;
     } finally {
       setIsLoading(false);
@@ -114,6 +120,37 @@ const DiagnosticsPage = () => {
           };
         }
         return { ok: true, data };
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testRawEdgeFunctionFetch = async (fnName: string, method: 'OPTIONS' | 'POST') => {
+    setIsLoading(true);
+    try {
+      await runTest(`Raw fetch (${method}): ${fnName}`, async () => {
+        if (!supabaseUrl) {
+          return { ok: false, error: 'supabaseUrl is not available on the client' };
+        }
+
+        const url = `${supabaseUrl}/functions/v1/${fnName}`;
+
+        const res = await fetch(url, {
+          method,
+          headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+          body: method === 'POST' ? JSON.stringify({ ping: true, ts: new Date().toISOString() }) : undefined,
+        });
+
+        const text = await res.text().catch(() => '');
+
+        return {
+          ok: res.ok,
+          status: res.status,
+          statusText: res.statusText,
+          url,
+          responsePreview: text.slice(0, 500),
+        };
       });
     } finally {
       setIsLoading(false);
@@ -183,6 +220,24 @@ const DiagnosticsPage = () => {
             className="bg-band-purple hover:bg-band-purple/90"
           >
             Test Shows (Sheet)
+          </Button>
+
+          <Button
+            onClick={() => testRawEdgeFunctionFetch('fetch-google-sheet', 'OPTIONS')}
+            disabled={isLoading}
+            variant="outline"
+            className="border-white/20 hover:bg-white/10"
+          >
+            Raw OPTIONS (Shows)
+          </Button>
+
+          <Button
+            onClick={() => testRawEdgeFunctionFetch('fetch-google-sheet', 'POST')}
+            disabled={isLoading}
+            variant="outline"
+            className="border-white/20 hover:bg-white/10"
+          >
+            Raw POST (Shows)
           </Button>
 
           <Button
