@@ -71,7 +71,7 @@ const DiagnosticsPage = () => {
           .from('shows')
           .select('*')
           .limit(10);
-        
+
         if (error) throw error;
         return data;
       });
@@ -86,11 +86,34 @@ const DiagnosticsPage = () => {
       await runTest('Content Table Test', async () => {
         const { data, error } = await supabase
           .from('content')
-          .select('*')  
+          .select('*')
           .limit(5);
-        
+
         if (error) throw error;
         return data;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testEdgeFunction = async (fnName: string) => {
+    setIsLoading(true);
+    try {
+      await runTest(`Edge Function: ${fnName}`, async () => {
+        const { data, error } = await supabase.functions.invoke(fnName);
+        if (error) {
+          // Make error JSON-serializable for display
+          return {
+            ok: false,
+            error: {
+              name: (error as any)?.name,
+              message: (error as any)?.message,
+              context: (error as any)?.context,
+            },
+          };
+        }
+        return { ok: true, data };
       });
     } finally {
       setIsLoading(false);
@@ -144,7 +167,7 @@ const DiagnosticsPage = () => {
         </div>
 
         <div className="flex flex-wrap gap-4 mb-6">
-          <Button 
+          <Button
             onClick={testBasicConnection}
             disabled={isLoading}
             variant="default"
@@ -152,26 +175,62 @@ const DiagnosticsPage = () => {
           >
             Test Basic Connection
           </Button>
-          
-          <Button 
+
+          <Button
+            onClick={() => testEdgeFunction('fetch-google-sheet')}
+            disabled={isLoading}
+            variant="default"
+            className="bg-band-purple hover:bg-band-purple/90"
+          >
+            Test Shows (Sheet)
+          </Button>
+
+          <Button
+            onClick={() => testEdgeFunction('fetch-content-sheet')}
+            disabled={isLoading}
+            variant="default"
+            className="bg-band-purple hover:bg-band-purple/90"
+          >
+            Test Content (Sheet)
+          </Button>
+
+          <Button
+            onClick={() => testEdgeFunction('fetch-media-sheet')}
+            disabled={isLoading}
+            variant="default"
+            className="bg-band-purple hover:bg-band-purple/90"
+          >
+            Test Media (Sheet)
+          </Button>
+
+          <Button
+            onClick={() => testEdgeFunction('fetch-testimonials-sheet')}
+            disabled={isLoading}
+            variant="default"
+            className="bg-band-purple hover:bg-band-purple/90"
+          >
+            Test Testimonials (Sheet)
+          </Button>
+
+          <Button
             onClick={testShows}
             disabled={isLoading || connectionStatus !== 'connected'}
             variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
+            className="bg-band-blue hover:bg-band-blue/90"
           >
             Test Shows Table
           </Button>
-          
-          <Button 
-            onClick={testContent} 
+
+          <Button
+            onClick={testContent}
             disabled={isLoading || connectionStatus !== 'connected'}
             variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
+            className="bg-band-blue hover:bg-band-blue/90"
           >
             Test Content Table
           </Button>
-          
-          <Button 
+
+          <Button
             onClick={clearResults}
             variant="outline"
             className="border-white/20 hover:bg-white/10"
