@@ -1,19 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/context/LanguageContext';
-
-interface MediaItem {
-  id: string;
-  type: 'photo' | 'video';
-  url: string;
-  thumbnail?: string;
-  title: string;
-  description?: string;
-  duration?: string;
-}
+import { fetchMedia, MediaItem } from '@/lib/googleSheets';
 
 const MediaSection = () => {
   const [activeTab, setActiveTab] = useState("photos");
@@ -23,24 +12,16 @@ const MediaSection = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    const fetchMedia = async () => {
+    const loadMedia = async () => {
       try {
-        // Google Sheets is now the source of truth for media
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-media-sheet');
-
-        if (functionError) {
-          throw functionError;
-        }
-
-        const items: MediaItem[] = functionData?.media ?? [];
-
+        const items = await fetchMedia();
         const photosData = items.filter((item) => item.type === 'photo');
         const videosData = items.filter((item) => item.type === 'video');
 
         setPhotos(photosData.length > 0 ? photosData : getDefaultPhotos());
         setVideos(videosData.length > 0 ? videosData : getDefaultVideos());
       } catch (error) {
-        console.error('Error in media fetch:', error);
+        console.error('Error fetching media:', error);
         setPhotos(getDefaultPhotos());
         setVideos(getDefaultVideos());
       } finally {
@@ -48,43 +29,22 @@ const MediaSection = () => {
       }
     };
 
-    fetchMedia();
+    loadMedia();
   }, []);
 
   const getDefaultPhotos = (): MediaItem[] => [
-    { id: '1', type: 'photo' as const, url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Concert photo 1", description: "Live at Starlight Arena" },
-    { id: '2', type: 'photo' as const, url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 2", description: "Summer Tour 2023" },
-    { id: '3', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 3", description: "Acoustic Session" },
-    { id: '4', type: 'photo' as const, url: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb", title: "Concert photo 4", description: "Behind the Scenes" },
-    { id: '5', type: 'photo' as const, url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 5", description: "Fan Meetup" },
-    { id: '6', type: 'photo' as const, url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 6", description: "Live at The Paradise" },
+    { id: '1', type: 'photo', url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Concert photo 1", description: "Live at Starlight Arena", order: 1 },
+    { id: '2', type: 'photo', url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 2", description: "Summer Tour 2023", order: 2 },
+    { id: '3', type: 'photo', url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 3", description: "Acoustic Session", order: 3 },
+    { id: '4', type: 'photo', url: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb", title: "Concert photo 4", description: "Behind the Scenes", order: 4 },
+    { id: '5', type: 'photo', url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Concert photo 5", description: "Fan Meetup", order: 5 },
+    { id: '6', type: 'photo', url: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "Concert photo 6", description: "Live at The Paradise", order: 6 },
   ];
   
   const getDefaultVideos = (): MediaItem[] => [
-    { 
-      id: '1', 
-      type: 'video' as const, 
-      url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
-      thumbnail: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", 
-      title: "Yellow - Live at Starlight Arena",
-      duration: "5:42"
-    },
-    { 
-      id: '2', 
-      type: 'video' as const,
-      url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
-      thumbnail: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", 
-      title: "Fix You - Acoustic Version",
-      duration: "4:35"
-    },
-    { 
-      id: '3', 
-      type: 'video' as const,
-      url: "https://www.youtube.com/embed/yKNxeF4KMsY", 
-      thumbnail: "https://images.unsplash.com/photo-1500673922987-e212871fec22", 
-      title: "The Scientist - Behind the Scenes",
-      duration: "3:58"
-    },
+    { id: '1', type: 'video', url: "https://www.youtube.com/embed/yKNxeF4KMsY", thumbnail: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05", title: "Yellow - Live at Starlight Arena", duration: "5:42", order: 1 },
+    { id: '2', type: 'video', url: "https://www.youtube.com/embed/yKNxeF4KMsY", thumbnail: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", title: "Fix You - Acoustic Version", duration: "4:35", order: 2 },
+    { id: '3', type: 'video', url: "https://www.youtube.com/embed/yKNxeF4KMsY", thumbnail: "https://images.unsplash.com/photo-1500673922987-e212871fec22", title: "The Scientist - Behind the Scenes", duration: "3:58", order: 3 },
   ];
 
   const texts = {
@@ -104,7 +64,7 @@ const MediaSection = () => {
             <div className="h-1 w-20 bg-band-blue mx-auto mb-8"></div>
           </div>
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-blue border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-blue border-r-transparent"></div>
             <p className="mt-4 text-white/70">Loading media...</p>
           </div>
         </div>
@@ -114,7 +74,6 @@ const MediaSection = () => {
 
   return (
     <section id="media" className="py-20 bg-black relative overflow-hidden">
-      {/* Decorative elements */}
       <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-band-pink/10 blur-3xl"></div>
       <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
       
