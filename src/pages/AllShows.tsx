@@ -1,21 +1,11 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, MapPin, ArrowLeft } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/context/LanguageContext';
-
-interface Show {
-  id: string;
-  date: string;
-  venue: string;
-  location: string;
-  ticket_link: string;
-  image_url?: string;
-}
+import { fetchShows, Show } from '@/lib/googleSheets';
 
 // Parse a date string in dd/MM/yyyy or dd/MM/yy format to a Date object
 function parseDateString(dateString: string): Date | null {
@@ -35,8 +25,7 @@ function parseDateString(dateString: string): Date | null {
 
     const date = new Date(trimmed);
     return !isNaN(date.getTime()) ? date : null;
-  } catch (e) {
-    console.error('Error parsing date:', dateString, e);
+  } catch {
     return null;
   }
 }
@@ -48,24 +37,15 @@ const AllShows = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    const fetchShows = async () => {
+    const loadShows = async () => {
       try {
-        // Google Sheets is now the source of truth for shows
-        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
-          'fetch-google-sheet'
-        );
-
-        if (functionError) throw functionError;
-
-        const rawShows = googleSheetsData?.shows ?? [];
-        const sortedShows = rawShows.sort((a: any, b: any) => {
+        const rawShows = await fetchShows();
+        const sortedShows = rawShows.sort((a, b) => {
           const dateA = parseDateString(a.date);
           const dateB = parseDateString(b.date);
-
           if (dateA && dateB) return dateA.getTime() - dateB.getTime();
           return 0;
         });
-
         setShows(sortedShows);
       } catch (error: any) {
         console.error('Error fetching shows:', error);
@@ -81,15 +61,12 @@ const AllShows = () => {
       }
     };
 
-    fetchShows();
+    loadShows();
   }, [language]);
 
-  // Format the date for display
   const formatDate = (dateString: string) => {
     try {
-      // Parse the date using our custom function for dd/MM/yyyy format
       const date = parseDateString(dateString);
-      
       if (date && !isNaN(date.getTime())) {
         return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'he-IL', {
           weekday: 'short',
@@ -98,13 +75,12 @@ const AllShows = () => {
           year: 'numeric'
         }).format(date);
       }
-      return dateString; // Fall back to original string if parsing fails
-    } catch (e) {
-      return dateString; // Return original date string in case of error
+      return dateString;
+    } catch {
+      return dateString;
     }
   };
 
-  // Translations
   const texts = {
     allShows: language === 'en' ? 'ALL SHOWS' : 'כל ההופעות',
     loading: language === 'en' ? 'Loading shows...' : 'טוען הופעות...',
@@ -135,7 +111,7 @@ const AllShows = () => {
         
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent"></div>
             <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
         ) : shows.length === 0 ? (

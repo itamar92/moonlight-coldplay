@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchContent, ContentData } from '@/lib/googleSheets';
 
 interface HeroContent {
   title: string;
@@ -61,47 +61,16 @@ const isValidHeroContent = (obj: any): obj is HeroContent => {
 export const useHeroData = (language: string) => {
   const [content, setContent] = useState<MultilingualHeroContent>(defaultContent);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [session, setSession] = useState<any>(null);
   const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) return;
-
-        setSession(data.session);
-
-        if (data.session) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', data.session.user.id)
-            .single();
-
-          if (!profileError && profileData) {
-            setIsAdmin(profileData.is_admin === true);
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    const fetchHeroContent = async () => {
+    const loadHeroContent = async () => {
       try {
         setLoading(true);
         setConnectionError(false);
 
-        // Google Sheets is now the source of truth for content
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-content-sheet');
-
-        if (functionError) {
-          throw functionError;
-        }
-
-        const hero = functionData?.content?.hero;
+        const contentData = await fetchContent();
+        const hero = contentData?.hero;
         if (!hero) return;
 
         const enCandidate: any = {
@@ -137,20 +106,16 @@ export const useHeroData = (language: string) => {
       }
     };
 
-    checkSession();
-    fetchHeroContent();
+    loadHeroContent();
   }, []);
 
   const currentContent = content[language as keyof MultilingualHeroContent] || content.en;
 
   return {
     loading,
-    isAdmin,
     connectionError,
-    session,
     currentContent,
   };
 };
 
 export type { HeroContent, MultilingualHeroContent };
-

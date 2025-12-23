@@ -1,21 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, MapPin } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/context/LanguageContext';
-
-interface Show {
-  id: string;
-  date: string;
-  venue: string;
-  location: string;
-  ticket_link: string;
-  image_url?: string;
-}
+import { fetchShows, Show } from '@/lib/googleSheets';
 
 // Parse a date string in dd/MM/yyyy or dd/MM/yy format to a Date object
 function parseDateString(dateString: string): Date | null {
@@ -27,15 +17,12 @@ function parseDateString(dateString: string): Date | null {
       const [dayRaw, monthRaw, yearRaw] = trimmed.split('/');
       const day = dayRaw?.padStart(2, '0');
       const month = monthRaw?.padStart(2, '0');
-
-      // support both yyyy and yy
       const year = yearRaw?.length === 2 ? `20${yearRaw}` : yearRaw;
 
       const parsedDate = new Date(`${year}-${month}-${day}`);
       return !isNaN(parsedDate.getTime()) ? parsedDate : null;
     }
 
-    // Fallback to standard date parsing
     const date = new Date(trimmed);
     return !isNaN(date.getTime()) ? date : null;
   } catch {
@@ -51,83 +38,46 @@ const ShowsSection = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    const fetchShows = async () => {
+    const loadShows = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Google Sheets is now the source of truth for shows
-        const { data: googleSheetsData, error: functionError } = await supabase.functions.invoke(
-          'fetch-google-sheet'
-        );
-
-        if (functionError) {
-          throw new Error(functionError.message || 'Failed to load shows from Google Sheets');
-        }
-
-        const rawShows = googleSheetsData?.shows ?? [];
+        const rawShows = await fetchShows();
         const processedShows = rawShows.length > 0 ? processShows(rawShows) : [];
         setShows(processedShows);
-      } catch (error: any) {
-        console.error('Error fetching shows:', error);
-        setError(error?.message || 'Failed to load shows');
+      } catch (err: any) {
+        console.error('Error fetching shows:', err);
+        setError(err?.message || 'Failed to load shows');
         setShows([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchShows();
+    loadShows();
   }, [language]);
 
-  // Helper function to process and filter shows
-  const processShows = (rawShows: any[]) => {
+  const processShows = (rawShows: Show[]) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    console.log('Current date for comparison:', now.toISOString());
     
     const futureShows = rawShows.filter(show => {
       const showDate = parseDateString(show.date);
-      const isFuture = showDate && showDate >= now;
-      console.log(`Show "${show.venue}" on ${show.date}: showDate=${showDate?.toISOString()}, isFuture=${isFuture}`);
-      return isFuture;
+      return showDate && showDate >= now;
     }).sort((a, b) => {
       const dateA = parseDateString(a.date);
       const dateB = parseDateString(b.date);
-      
-      if (dateA && dateB) {
-        return dateA.getTime() - dateB.getTime();
-      }
-      
+      if (dateA && dateB) return dateA.getTime() - dateB.getTime();
       return 0;
     });
-    
-    console.log('Future shows found:', futureShows.length);
-    
-    // If no future shows, let's also check for recent shows (last 30 days) for debugging
-    if (futureShows.length === 0) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      thirtyDaysAgo.setHours(0, 0, 0, 0);
-      
-      const recentShows = rawShows.filter(show => {
-        const showDate = parseDateString(show.date);
-        const isRecent = showDate && showDate >= thirtyDaysAgo;
-        console.log(`Recent check - Show "${show.venue}" on ${show.date}: showDate=${showDate?.toISOString()}, isRecent=${isRecent}`);
-        return isRecent;
-      });
-      
-      console.log('Recent shows (last 30 days):', recentShows.length);
-    }
     
     return futureShows.slice(0, 6);
   };
 
-  // Format the date for display
   const formatDate = (dateString: string) => {
     try {
       const date = parseDateString(dateString);
-      
       if (date && !isNaN(date.getTime())) {
         return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'he-IL', {
           weekday: 'short',
@@ -137,12 +87,11 @@ const ShowsSection = () => {
         }).format(date);
       }
       return dateString;
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };
 
-  // Translations
   const texts = {
     upcomingShows: language === 'en' ? 'UPCOMING SHOWS' : 'הופעות קרובות',
     loading: language === 'en' ? 'Loading shows...' : 'טוען הופעות...',
@@ -152,8 +101,6 @@ const ShowsSection = () => {
     viewAll: language === 'en' ? 'VIEW ALL SHOWS' : 'צפה בכל ההופעות',
     error: language === 'en' ? 'Error loading shows' : 'שגיאה בטעינת הופעות',
   };
-
-  console.log('Render state:', { loading, error, showsCount: shows.length });
 
   if (loading) {
     return (
@@ -170,7 +117,7 @@ const ShowsSection = () => {
             <div className="h-1 w-20 bg-band-purple mx-auto"></div>
           </div>
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent"></div>
             <p className="mt-4 text-white/70">{texts.loading}</p>
           </div>
         </div>
@@ -210,7 +157,7 @@ const ShowsSection = () => {
               {language === 'en' ? (
                 <>UPCOMING <span className="text-band-purple">SHOWS</span></>
               ) : (
-                <>הופעות <span className="text-band-purple">קrובות</span></>
+                <>הופעות <span className="text-band-purple">קרובות</span></>
               )}
             </h2>
             <div className="h-1 w-20 bg-band-purple mx-auto"></div>
@@ -232,7 +179,7 @@ const ShowsSection = () => {
             {language === 'en' ? (
               <>UPCOMING <span className="text-band-purple">SHOWS</span></>
             ) : (
-              <>הופעות <span className="text-band-purple">קrובות</span></>
+              <>הופעות <span className="text-band-purple">קרובות</span></>
             )}
           </h2>
           <div className="h-1 w-20 bg-band-purple mx-auto"></div>

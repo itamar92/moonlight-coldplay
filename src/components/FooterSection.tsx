@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchContent } from '@/lib/googleSheets';
 
 interface FooterTranslations {
   companyName: string;
@@ -60,15 +59,12 @@ const FooterSection = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    const fetchFooterData = async () => {
+    const loadFooterData = async () => {
       try {
         setIsLoading(true);
 
-        // Google Sheets is now the source of truth for content
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-content-sheet');
-        if (functionError) throw functionError;
-
-        const footer = functionData?.content?.footer;
+        const contentData = await fetchContent();
+        const footer = contentData?.footer;
         if (!footer) return;
 
         const parsed: FooterData = {
@@ -103,30 +99,25 @@ const FooterSection = () => {
       }
     };
 
-    fetchFooterData();
+    loadFooterData();
   }, []);
 
   const handleSubscribe = () => {
     if (email.trim()) {
-      // Here you would typically handle newsletter subscription
-      // For now, just show an alert
       alert(`Thank you for subscribing with ${email}`);
       setEmail('');
     }
   };
 
-  // Get the appropriate translation based on the selected language
   const getTranslatedText = (field: keyof FooterTranslations) => {
     if (footerData.translations && footerData.translations[language]) {
       return footerData.translations[language][field];
     }
-    // Fallback to default language (English)
     return footerData[field];
   };
 
   return (
     <footer id="contact" className="pt-20 pb-10 bg-black relative overflow-hidden">
-      {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-cosmic"></div>
       <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
       

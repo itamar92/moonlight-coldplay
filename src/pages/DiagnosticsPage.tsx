@@ -1,34 +1,33 @@
-
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from "@/components/ui/button";
-import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { 
+  testConnection, 
+  fetchShows, 
+  fetchMedia, 
+  fetchTestimonials, 
+  fetchContent,
+  GOOGLE_SHEET_ID 
+} from '@/lib/googleSheets';
 
 const DiagnosticsPage = () => {
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
 
-  const supabaseUrl = (supabase as any)?.supabaseUrl as string | undefined;
-
   useEffect(() => {
-    // Check connection on page load
-    testBasicConnection();
+    runConnectionTest();
   }, []);
 
   const addResult = (test: string, result: any) => {
-    setResults(prev => [{
-      test,
-      result,
-      timestamp: new Date().toISOString()
-    }, ...prev]);
+    setResults(prev => [...prev, { test, result, timestamp: new Date().toISOString() }]);
   };
 
   const runTest = async (name: string, fn: () => Promise<any>) => {
+    addResult(`${name} - Starting...`, null);
+    const startTime = performance.now();
     try {
-      addResult(`${name} - Starting`, 'Running...');
-      const startTime = performance.now();
       const result = await fn();
       const endTime = performance.now();
       addResult(`${name} - Completed in ${(endTime - startTime).toFixed(2)}ms`, result);
@@ -37,32 +36,19 @@ const DiagnosticsPage = () => {
       addResult(`${name} - Error`, {
         name: (error as any)?.name,
         message: (error as any)?.message,
-        stack: (error as any)?.stack,
       });
       return null;
     }
   };
 
-  const testBasicConnection = async () => {
+  const runConnectionTest = async () => {
     setIsLoading(true);
     try {
-      const result = await runTest('Basic Connection Test', async () => {
-        console.log('Testing basic Supabase connection in diagnostics...');
-
-        // Try a simple query that should always work if the connection is valid
-        const { data, error } = await supabase.from('profiles').select('id').limit(1);
-
-        if (error) {
-          console.error('Basic connection test failed with error:', error);
-          setConnectionStatus('disconnected');
-          return { success: false, error };
-        }
-
-        console.log('Basic connection test successful, data received:', data);
-        setConnectionStatus('connected');
-        return { success: true, data };
+      const result = await runTest('Google Sheets Connection Test', async () => {
+        const connectionResult = await testConnection();
+        setConnectionStatus(connectionResult.success ? 'connected' : 'disconnected');
+        return connectionResult;
       });
-
       return result?.success === true;
     } finally {
       setIsLoading(false);
@@ -72,14 +58,33 @@ const DiagnosticsPage = () => {
   const testShows = async () => {
     setIsLoading(true);
     try {
-      await runTest('Shows Table Test', async () => {
-        const { data, error } = await supabase
-          .from('shows')
-          .select('*')
-          .limit(10);
+      await runTest('Fetch Shows (Coldplay tab)', async () => {
+        const shows = await fetchShows();
+        return { count: shows.length, sample: shows.slice(0, 3) };
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        if (error) throw error;
-        return data;
+  const testMedia = async () => {
+    setIsLoading(true);
+    try {
+      await runTest('Fetch Media', async () => {
+        const media = await fetchMedia();
+        return { count: media.length, sample: media.slice(0, 3) };
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testTestimonials = async () => {
+    setIsLoading(true);
+    try {
+      await runTest('Fetch Testimonials', async () => {
+        const testimonials = await fetchTestimonials();
+        return { count: testimonials.length, sample: testimonials.slice(0, 3) };
       });
     } finally {
       setIsLoading(false);
@@ -89,229 +94,56 @@ const DiagnosticsPage = () => {
   const testContent = async () => {
     setIsLoading(true);
     try {
-      await runTest('Content Table Test', async () => {
-        const { data, error } = await supabase
-          .from('content')
-          .select('*')
-          .limit(5);
-
-        if (error) throw error;
-        return data;
+      await runTest('Fetch Content', async () => {
+        const content = await fetchContent();
+        return { sections: Object.keys(content), content };
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const testEdgeFunction = async (fnName: string) => {
-    setIsLoading(true);
-    try {
-      await runTest(`Edge Function: ${fnName}`, async () => {
-        const { data, error } = await supabase.functions.invoke(fnName);
-        if (error) {
-          // Make error JSON-serializable for display
-          return {
-            ok: false,
-            error: {
-              name: (error as any)?.name,
-              message: (error as any)?.message,
-              context: (error as any)?.context,
-            },
-          };
-        }
-        return { ok: true, data };
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const testRawEdgeFunctionFetch = async (fnName: string, method: 'OPTIONS' | 'POST') => {
-    setIsLoading(true);
-    try {
-      await runTest(`Raw fetch (${method}): ${fnName}`, async () => {
-        if (!supabaseUrl) {
-          return { ok: false, error: 'supabaseUrl is not available on the client' };
-        }
-
-        const url = `${supabaseUrl}/functions/v1/${fnName}`;
-
-        const res = await fetch(url, {
-          method,
-          headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
-          body: method === 'POST' ? JSON.stringify({ ping: true, ts: new Date().toISOString() }) : undefined,
-        });
-
-        const text = await res.text().catch(() => '');
-
-        return {
-          ok: res.ok,
-          status: res.status,
-          statusText: res.statusText,
-          url,
-          responsePreview: text.slice(0, 500),
-        };
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const clearResults = () => {
-    setResults([]);
-  };
+  const clearResults = () => setResults([]);
 
   return (
-    <div className="min-h-screen bg-band-dark text-white p-6">
-      <div className="container mx-auto max-w-5xl">
+    <div className="min-h-screen bg-band-dark text-white p-8">
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-8">
-          <Link to="/">
-            <Button variant="ghost" className="text-white mr-4" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Database Connection Diagnostics</h1>
+          <Link to="/"><Button variant="ghost" className="text-white mr-4" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
+          <h1 className="text-3xl font-bold">Google Sheets Diagnostics</h1>
         </div>
-        
-        {/* Connection Status */}
-        <div className="mb-6">
-          <div className="flex items-center mb-2">
-            <div 
-              className={`w-4 h-4 rounded-full mr-2 ${
-                connectionStatus === 'connected' ? 'bg-green-500' : 
-                connectionStatus === 'disconnected' ? 'bg-red-500' : 
-                'bg-yellow-500'
-              }`} 
-            />
-            <h2 className="text-xl font-semibold">
-              {connectionStatus === 'connected' ? 'Connected to Database' : 
-               connectionStatus === 'disconnected' ? 'Disconnected from Database' : 
-               'Checking Connection...'}
-            </h2>
+
+        <div className="mb-8 p-4 rounded-lg bg-black/50 border border-white/10">
+          <h2 className="text-xl font-semibold mb-2">Connection Status</h2>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'disconnected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+            <span className="capitalize">{connectionStatus}</span>
           </div>
-          
-          {connectionStatus === 'disconnected' && (
-            <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-md mb-4">
-              <p className="font-medium mb-2">Connection Issues Detected</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Check if the Supabase project is online</li>
-                <li>Verify the Supabase URL and API keys are correct</li>
-                <li>Check for any network issues or firewall restrictions</li>
-                <li>If using a custom domain, verify DNS configuration</li>
-              </ul>
-            </div>
-          )}
+          <p className="text-sm text-white/60 mt-2">Sheet ID: <code className="bg-black/30 px-2 py-1 rounded">{GOOGLE_SHEET_ID}</code></p>
         </div>
 
-        <div className="flex flex-wrap gap-4 mb-6">
-          <Button
-            onClick={testBasicConnection}
-            disabled={isLoading}
-            variant="default"
-            className="bg-band-blue hover:bg-band-blue/90"
-          >
-            Test Basic Connection
-          </Button>
-
-          <Button
-            onClick={() => testEdgeFunction('fetch-google-sheet')}
-            disabled={isLoading}
-            variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
-          >
-            Test Shows (Sheet)
-          </Button>
-
-          <Button
-            onClick={() => testRawEdgeFunctionFetch('fetch-google-sheet', 'OPTIONS')}
-            disabled={isLoading}
-            variant="outline"
-            className="border-white/20 hover:bg-white/10"
-          >
-            Raw OPTIONS (Shows)
-          </Button>
-
-          <Button
-            onClick={() => testRawEdgeFunctionFetch('fetch-google-sheet', 'POST')}
-            disabled={isLoading}
-            variant="outline"
-            className="border-white/20 hover:bg-white/10"
-          >
-            Raw POST (Shows)
-          </Button>
-
-          <Button
-            onClick={() => testEdgeFunction('fetch-content-sheet')}
-            disabled={isLoading}
-            variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
-          >
-            Test Content (Sheet)
-          </Button>
-
-          <Button
-            onClick={() => testEdgeFunction('fetch-media-sheet')}
-            disabled={isLoading}
-            variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
-          >
-            Test Media (Sheet)
-          </Button>
-
-          <Button
-            onClick={() => testEdgeFunction('fetch-testimonials-sheet')}
-            disabled={isLoading}
-            variant="default"
-            className="bg-band-purple hover:bg-band-purple/90"
-          >
-            Test Testimonials (Sheet)
-          </Button>
-
-          <Button
-            onClick={testShows}
-            disabled={isLoading || connectionStatus !== 'connected'}
-            variant="default"
-            className="bg-band-blue hover:bg-band-blue/90"
-          >
-            Test Shows Table
-          </Button>
-
-          <Button
-            onClick={testContent}
-            disabled={isLoading || connectionStatus !== 'connected'}
-            variant="default"
-            className="bg-band-blue hover:bg-band-blue/90"
-          >
-            Test Content Table
-          </Button>
-
-          <Button
-            onClick={clearResults}
-            variant="outline"
-            className="border-white/20 hover:bg-white/10"
-          >
-            Clear Results
-          </Button>
+        <div className="mb-8 flex flex-wrap gap-4">
+          <Button onClick={runConnectionTest} disabled={isLoading} className="bg-band-purple hover:bg-band-purple/80">Test Connection</Button>
+          <Button onClick={testShows} disabled={isLoading} variant="outline" className="border-white/20 hover:bg-white/10">Test Shows</Button>
+          <Button onClick={testMedia} disabled={isLoading} variant="outline" className="border-white/20 hover:bg-white/10">Test Media</Button>
+          <Button onClick={testTestimonials} disabled={isLoading} variant="outline" className="border-white/20 hover:bg-white/10">Test Testimonials</Button>
+          <Button onClick={testContent} disabled={isLoading} variant="outline" className="border-white/20 hover:bg-white/10">Test Content</Button>
+          <Button onClick={clearResults} variant="ghost" className="text-white/60 hover:text-white">Clear</Button>
         </div>
-        
-        <div className="bg-black/30 border border-white/10 rounded-lg p-6">
+
+        <div className="bg-black/50 rounded-lg p-4 border border-white/10">
           <h2 className="text-xl font-semibold mb-4">Test Results</h2>
-          
           {results.length === 0 ? (
-            <p className="text-white/60">No tests run yet</p>
+            <p className="text-white/60">No tests run yet.</p>
           ) : (
-            <div className="space-y-4">
-              {results.map((result, index) => (
-                <div key={index} className="p-4 border border-white/10 rounded-lg bg-black/20">
-                  <div className="flex justify-between">
-                    <p className="font-medium">{result.test}</p>
-                    <p className="text-xs text-white/60">{new Date(result.timestamp).toLocaleTimeString()}</p>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {results.map((item, index) => (
+                <div key={index} className="border-b border-white/10 pb-4 last:border-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-band-purple">{item.test}</span>
+                    <span className="text-xs text-white/40">{new Date(item.timestamp).toLocaleTimeString()}</span>
                   </div>
-                  <pre className="bg-black/30 p-3 mt-2 rounded overflow-auto text-white/80 text-sm">
-                    {typeof result.result === 'object' 
-                      ? JSON.stringify(result.result, null, 2) 
-                      : String(result.result)}
-                  </pre>
+                  {item.result && <pre className="text-sm text-white/80 bg-black/30 p-3 rounded overflow-x-auto">{JSON.stringify(item.result, null, 2)}</pre>}
                 </div>
               ))}
             </div>

@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Quote } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/context/LanguageContext';
-
-interface Testimonial {
-  id: string;
-  author: string;
-  role: string;
-  content: string;
-  avatar_url?: string;
-  order: number;
-}
+import { fetchTestimonials, Testimonial } from '@/lib/googleSheets';
 
 const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
@@ -19,13 +10,11 @@ const TestimonialsSection = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    const fetchTestimonials = async () => {
+    const loadTestimonials = async () => {
       try {
-        // Google Sheets is now the source of truth for testimonials
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('fetch-testimonials-sheet');
-
-        if (!functionError && functionData?.testimonials?.length > 0) {
-          setTestimonials(functionData.testimonials);
+        const data = await fetchTestimonials();
+        if (data.length > 0) {
+          setTestimonials(data);
         } else {
           setTestimonials(getFallbackData());
         }
@@ -37,7 +26,7 @@ const TestimonialsSection = () => {
       }
     };
 
-    fetchTestimonials();
+    loadTestimonials();
   }, [language]);
 
   const getFallbackData = (): Testimonial[] => [
@@ -76,7 +65,7 @@ const TestimonialsSection = () => {
             <div className="h-1 w-20 bg-band-purple mx-auto"></div>
           </div>
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-band-purple border-r-transparent"></div>
             <p className="mt-4 text-white/70">
               {language === 'en' ? 'Loading testimonials...' : 'טוען המלצות...'}
             </p>
