@@ -2,6 +2,31 @@
 
 export const GOOGLE_SHEET_ID = '1V0m-BhUqJvvCDGhdklUxKSxo2OOd2h1ZR1HiMLZ27mc';
 
+// Convert Google Drive sharing links to direct display URLs
+export function convertGoogleDriveUrl(url: string | undefined): string | undefined {
+  if (!url || typeof url !== 'string') return url;
+  
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return undefined;
+  
+  // Match Google Drive file links: /file/d/FILE_ID/...
+  const driveMatch = trimmedUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    const fileId = driveMatch[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  
+  // Match Google Drive open links: ?id=FILE_ID
+  const openMatch = trimmedUrl.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (openMatch) {
+    const fileId = openMatch[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  
+  // Return as-is if not a Google Drive link
+  return trimmedUrl;
+}
+
 // Build CSV export URL for a specific sheet tab
 function getSheetCsvUrl(sheetName: string): string {
   return `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
@@ -87,7 +112,7 @@ export async function fetchShows(): Promise<Show[]> {
       venue: row[1] || '',
       location: row[3] || '',
       ticket_link: row[4] || '#',
-      image_url: row[6] || undefined,
+      image_url: convertGoogleDriveUrl(row[6]),
     }));
 }
 
@@ -110,13 +135,17 @@ export async function fetchMedia(): Promise<MediaItem[]> {
   return rows
     .map((row, index) => {
       const type = (row[0] || '').toLowerCase();
-      const url = row[1] || '';
-      const thumbnail = row[2] || undefined;
+      const rawUrl = row[1] || '';
+      const rawThumbnail = row[2] || undefined;
       const title = row[3] || (type === 'video' ? 'Video' : 'Photo');
       const description = row[4] || undefined;
       const duration = row[5] || undefined;
       const orderRaw = row[6] || '';
       const order = parseInt(orderRaw, 10);
+      
+      // Convert Google Drive URLs for photos, keep video URLs as-is (YouTube)
+      const url = type === 'photo' ? convertGoogleDriveUrl(rawUrl) || '' : rawUrl;
+      const thumbnail = convertGoogleDriveUrl(rawThumbnail);
       
       return {
         id: `media-${index + 1}`,
@@ -175,13 +204,22 @@ export async function fetchContent(): Promise<ContentData> {
   const rows = await fetchSheet('Content');
   const content: ContentData = {};
   
+  // Keys that contain URLs that might be Google Drive links
+  const urlKeys = ['logo_url', 'image_url', 'background_url', 'thumbnail', 'avatar_url'];
+  
   for (const row of rows) {
     const section = (row[0] || '').trim();
     const key = (row[1] || '').trim();
-    const valueEn = row[2] ?? '';
-    const valueHe = row[3] ?? '';
+    let valueEn = row[2] ?? '';
+    let valueHe = row[3] ?? '';
     
     if (!section || !key) continue;
+    
+    // Convert Google Drive URLs for URL-type keys
+    if (urlKeys.includes(key)) {
+      valueEn = convertGoogleDriveUrl(valueEn) || '';
+      valueHe = convertGoogleDriveUrl(valueHe) || valueEn; // Fallback to English if Hebrew is empty
+    }
     
     if (!content[section]) content[section] = {};
     content[section][key] = { en: valueEn, he: valueHe };
