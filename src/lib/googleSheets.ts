@@ -3,6 +3,7 @@
 export const GOOGLE_SHEET_ID = '1V0m-BhUqJvvCDGhdklUxKSxo2OOd2h1ZR1HiMLZ27mc';
 
 // Convert Google Drive sharing links to direct display URLs
+// Uses drive.google.com/thumbnail which works for publicly shared files
 export function convertGoogleDriveUrl(url: string | undefined): string | undefined {
   if (!url || typeof url !== 'string') return url;
   
@@ -13,14 +14,19 @@ export function convertGoogleDriveUrl(url: string | undefined): string | undefin
   const driveMatch = trimmedUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (driveMatch) {
     const fileId = driveMatch[1];
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    // Use thumbnail endpoint with large size for publicly shared files
+    const converted = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    console.log('[Google Drive URL] Converted:', { original: trimmedUrl, converted });
+    return converted;
   }
   
   // Match Google Drive open links: ?id=FILE_ID
   const openMatch = trimmedUrl.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
   if (openMatch) {
     const fileId = openMatch[1];
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    const converted = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    console.log('[Google Drive URL] Converted:', { original: trimmedUrl, converted });
+    return converted;
   }
   
   // Return as-is if not a Google Drive link
