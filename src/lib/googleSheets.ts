@@ -159,10 +159,11 @@ export async function fetchMedia(): Promise<MediaItem[]> {
         thumbnail = convertGoogleDriveUrl(rawThumbnail);
       } else if (type === 'video') {
         // Convert YouTube URLs to embed format
-        url = convertYouTubeToEmbed(rawUrl);
-        // Generate YouTube thumbnail if no custom thumbnail provided
         const videoId = extractYouTubeId(rawUrl);
-        thumbnail = rawThumbnail ? convertGoogleDriveUrl(rawThumbnail) : (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : undefined);
+        url = videoId ? `https://www.youtube.com/embed/${videoId}` : rawUrl;
+        // Generate YouTube thumbnail - always use YouTube thumbnail for videos
+        thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : convertGoogleDriveUrl(rawThumbnail);
+        console.log('[Video processing]', { rawUrl, videoId, url, thumbnail });
       }
       
       console.log('[Media Item]', { type, title, url, thumbnail });
@@ -186,7 +187,7 @@ export async function fetchMedia(): Promise<MediaItem[]> {
 function extractYouTubeId(url: string): string | null {
   if (!url) return null;
   
-  // Match youtu.be/VIDEO_ID
+  // Match youtu.be/VIDEO_ID (with optional query params like ?si=)
   const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
   if (shortMatch) return shortMatch[1];
   
@@ -198,6 +199,7 @@ function extractYouTubeId(url: string): string | null {
   const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
   if (embedMatch) return embedMatch[1];
   
+  console.log('[extractYouTubeId] No match for URL:', url);
   return null;
 }
 
