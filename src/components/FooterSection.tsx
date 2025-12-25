@@ -31,14 +31,14 @@ interface FooterData {
 const defaultFooterData: FooterData = {
   companyName: 'MOONLIGHT',
   description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.',
-  email: 'booking@moonlighttribute.com',
-  phone: '+1 (555) 123-4567',
-  location: 'Los Angeles, CA',
+  email: 'amiras83@gmail.com',
+  phone: ' +972-54-550-6561',
+  location: 'Israel',
   socialLinks: {
-    facebook: '#',
+    facebook: 'https://www.facebook.com/xandycoldplay',
     instagram: '#',
     twitter: '#',
-    youtube: '#'
+    youtube: 'https://www.youtube.com/@MoonLight-v6s'
   },
   translations: {
     en: {
@@ -46,7 +46,7 @@ const defaultFooterData: FooterData = {
       description: 'Experience the magic of Coldplay\'s iconic music performed live with passion and precision.'
     },
     he: {
-      companyName: 'מונלייט',
+      companyName: 'MOONLIGHT',
       description: 'חווה את הקסם של המוסיקה האיקונית של קולדפליי שמבוצעת בצורה חיה עם תשוקה ודיוק.'
     }
   }
