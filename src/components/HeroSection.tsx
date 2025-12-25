@@ -84,6 +84,10 @@ const HeroSection = () => {
           src={currentContent.logo_url || "/placeholder.svg"}
           alt="Moonlight Logo"
           className="mx-auto h-32 md:h-48 mb-8"
+          onError={(e) => {
+            console.log('[Image Error] Failed to load logo:', currentContent.logo_url);
+            (e.target as HTMLImageElement).src = "/placeholder.svg";
+          }}
         />
         <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white text-glow">
           {currentContent.title}
