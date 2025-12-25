@@ -123,7 +123,7 @@ export async function fetchShows(): Promise<Show[]> {
 }
 
 // ============ MEDIA (Media tab) ============
-// Columns: type | url | thumbnail | title | description | duration | order
+// Columns: type | title | url | thumbnail | description | duration | order
 export interface MediaItem {
   id: string;
   type: 'photo' | 'video';
@@ -141,17 +141,31 @@ export async function fetchMedia(): Promise<MediaItem[]> {
   return rows
     .map((row, index) => {
       const type = (row[0] || '').toLowerCase();
-      const rawUrl = row[1] || '';
-      const rawThumbnail = row[2] || undefined;
-      const title = row[3] || (type === 'video' ? 'Video' : 'Photo');
+      const title = row[1] || (type === 'video' ? 'Video' : 'Photo');
+      const rawUrl = row[2] || '';
+      const rawThumbnail = row[3] || undefined;
       const description = row[4] || undefined;
       const duration = row[5] || undefined;
       const orderRaw = row[6] || '';
       const order = parseInt(orderRaw, 10);
       
-      // Convert Google Drive URLs for photos, keep video URLs as-is (YouTube)
-      const url = type === 'photo' ? convertGoogleDriveUrl(rawUrl) || '' : rawUrl;
-      const thumbnail = convertGoogleDriveUrl(rawThumbnail);
+      // Convert Google Drive URLs for photos
+      // For videos, extract YouTube embed URL
+      let url = rawUrl;
+      let thumbnail = rawThumbnail;
+      
+      if (type === 'photo') {
+        url = convertGoogleDriveUrl(rawUrl) || '';
+        thumbnail = convertGoogleDriveUrl(rawThumbnail);
+      } else if (type === 'video') {
+        // Convert YouTube URLs to embed format
+        url = convertYouTubeToEmbed(rawUrl);
+        // Generate YouTube thumbnail if no custom thumbnail provided
+        const videoId = extractYouTubeId(rawUrl);
+        thumbnail = rawThumbnail ? convertGoogleDriveUrl(rawThumbnail) : (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : undefined);
+      }
+      
+      console.log('[Media Item]', { type, title, url, thumbnail });
       
       return {
         id: `media-${index + 1}`,
@@ -166,6 +180,34 @@ export async function fetchMedia(): Promise<MediaItem[]> {
     })
     .filter(item => item.url)
     .sort((a, b) => a.order - b.order);
+}
+
+// Extract YouTube video ID from various URL formats
+function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  
+  // Match youtu.be/VIDEO_ID
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+  if (shortMatch) return shortMatch[1];
+  
+  // Match youtube.com/watch?v=VIDEO_ID
+  const watchMatch = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+  if (watchMatch) return watchMatch[1];
+  
+  // Match youtube.com/embed/VIDEO_ID
+  const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
+  if (embedMatch) return embedMatch[1];
+  
+  return null;
+}
+
+// Convert YouTube URL to embed format
+function convertYouTubeToEmbed(url: string): string {
+  const videoId = extractYouTubeId(url);
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  return url;
 }
 
 // ============ TESTIMONIALS (Testimonials tab) ============
