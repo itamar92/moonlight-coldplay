@@ -84,7 +84,7 @@ serve(async (req) => {
     // Transform Google Sheets data to match our shows format
     // Only filter out private events, NOT past events - let the frontend handle date filtering
     const shows = data.values
-      .filter(row => {
+      .filter((row: string[]) => {
         // Log each row for debugging
         console.log("Processing row:", JSON.stringify(row));
         
@@ -100,7 +100,7 @@ serve(async (req) => {
         }
         return !isPrivate;
       })
-      .map((row) => ({
+      .map((row: string[]) => ({
         date: row[0] || "",              // Date
         venue: row[1] || "",             // Event Name
         location: row[3] || "",          // Location
@@ -116,9 +116,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching Google Sheets data:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
