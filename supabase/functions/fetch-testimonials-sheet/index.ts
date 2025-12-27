@@ -52,9 +52,18 @@ serve(async (req) => {
     }
     
     // Transform to testimonials format
-    const testimonials = data.values
-      .filter(row => row[0] && row[2]) // Must have author and content
-      .map((row, index) => ({
+    interface Testimonial {
+      id: string;
+      author: string;
+      role: string;
+      content: string;
+      avatar_url: string;
+      order: number;
+    }
+    
+    const testimonials: Testimonial[] = data.values
+      .filter((row: string[]) => row[0] && row[2]) // Must have author and content
+      .map((row: string[], index: number) => ({
         id: `sheet-${index + 1}`,
         author: row[0] || "",
         role: row[1] || "",
@@ -62,7 +71,7 @@ serve(async (req) => {
         avatar_url: row[3] || "",
         order: parseInt(row[4]) || index + 1
       }))
-      .sort((a, b) => a.order - b.order);
+      .sort((a: Testimonial, b: Testimonial) => a.order - b.order);
 
     console.log(`Processed ${testimonials.length} testimonials`);
     
@@ -70,9 +79,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching testimonials:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
