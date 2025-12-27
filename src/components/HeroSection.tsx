@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Database } from 'lucide-react';
+import { SparklesCore } from '@/components/ui/sparkles';
 
 const HeroSection = () => {
   const { language } = useLanguage();
@@ -78,8 +79,22 @@ const HeroSection = () => {
   }
 
   return (
-    <section className="py-24 bg-band-dark">
-      <div className="container mx-auto text-center">
+    <section className="py-24 bg-band-dark relative overflow-hidden">
+      {/* Hero sparkles */}
+      <div className="absolute inset-0 z-0">
+        <SparklesCore
+          id="hero-sparkles"
+          background="transparent"
+          minSize={0.6}
+          maxSize={2}
+          particleDensity={120}
+          particleColor="#9b5de5"
+          className="h-full w-full"
+          speed={3}
+        />
+      </div>
+      
+      <div className="container mx-auto text-center relative z-10">
         <img
           src={currentContent.logo_url || "/placeholder.svg"}
           alt="Moonlight Logo"
