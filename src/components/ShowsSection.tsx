@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/context/LanguageContext';
 import { fetchShows, Show } from '@/lib/googleSheets';
+import { SparklesCore } from '@/components/ui/sparkles';
 
 // Parse a date string in dd/MM/yyyy or dd/MM/yy format to a Date object
 function parseDateString(dateString: string): Date | null {
@@ -172,8 +173,20 @@ const ShowsSection = () => {
   }
 
   return (
-    <section id="shows" className="py-24 bg-band-dark">
-      <div className="container mx-auto px-4">
+    <section id="shows" className="py-24 bg-band-dark relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <SparklesCore
+          id="shows-sparkles"
+          background="transparent"
+          minSize={0.4}
+          maxSize={1.5}
+          particleDensity={80}
+          particleColor="#9b5de5"
+          className="h-full w-full"
+          speed={2}
+        />
+      </div>
+      <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white text-glow">
             {language === 'en' ? (
