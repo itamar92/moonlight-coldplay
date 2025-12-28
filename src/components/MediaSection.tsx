@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
 import { useLanguage } from '@/context/LanguageContext';
 import { fetchMedia, MediaItem } from '@/lib/googleSheets';
+import { SparklesCore } from '@/components/ui/sparkles';
 
 const MediaSection = () => {
   const [activeTab, setActiveTab] = useState("photos");
@@ -74,10 +75,22 @@ const MediaSection = () => {
 
   return (
     <section id="media" className="py-20 bg-black relative overflow-hidden">
-      <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-band-pink/10 blur-3xl"></div>
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl"></div>
+      <div className="absolute inset-0 z-0">
+        <SparklesCore
+          id="media-sparkles"
+          background="transparent"
+          minSize={0.4}
+          maxSize={1.5}
+          particleDensity={80}
+          particleColor="#9b5de5"
+          className="h-full w-full"
+          speed={2}
+        />
+      </div>
+      <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-band-pink/10 blur-3xl z-[1]"></div>
+      <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-band-blue/10 blur-3xl z-[1]"></div>
       
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white text-glow">
             {texts.mediaText} <span className="text-band-blue">{texts.mediaText2}</span>
