@@ -5,6 +5,61 @@ import { useLanguage } from '@/context/LanguageContext';
 import { fetchMedia, MediaItem } from '@/lib/googleSheets';
 import { SparklesCore } from '@/components/ui/sparkles';
 
+const VideoCard = ({ video }: { video: MediaItem }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  if (isPlaying) {
+    return (
+      <div className="relative overflow-hidden rounded-lg">
+        <div className="aspect-video w-full bg-black">
+          <iframe
+            src={`${video.url}?autoplay=1`}
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
+        </div>
+        <div className="p-4 bg-black/50 backdrop-blur-sm">
+          <h3 className="text-white font-medium text-lg">{video.title}</h3>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-lg group">
+      <div className="relative">
+        <img 
+          src={video.thumbnail} 
+          alt={video.title}
+          className="w-full h-48 object-cover brightness-75 transition-all duration-300 group-hover:brightness-100"
+        />
+        <div 
+          className="absolute inset-0 flex items-center justify-center cursor-pointer"
+          onClick={() => setIsPlaying(true)}
+        >
+          <div className="w-16 h-16 rounded-full bg-band-pink/80 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        {video.duration && (
+          <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-xs text-white">
+            {video.duration}
+          </div>
+        )}
+      </div>
+      <div className="p-4 bg-black/50 backdrop-blur-sm">
+        <h3 className="text-white font-medium text-lg">{video.title}</h3>
+      </div>
+    </div>
+  );
+};
+
 const MediaSection = () => {
   const [activeTab, setActiveTab] = useState("photos");
   const [photos, setPhotos] = useState<MediaItem[]>([]);
@@ -139,45 +194,7 @@ const MediaSection = () => {
           <TabsContent value="videos" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {videos.map((video) => (
-                <div key={video.id} className="relative overflow-hidden rounded-lg group">
-                  <div className="relative">
-                    <img 
-                      src={video.thumbnail} 
-                      alt={video.title}
-                      className="w-full h-48 object-cover brightness-75 transition-all duration-300 group-hover:brightness-100"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                         onClick={() => {
-                           const iframe = document.createElement('iframe');
-                           iframe.src = video.url;
-                           iframe.width = '100%';
-                           iframe.height = '100%';
-                           iframe.frameBorder = '0';
-                           iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-                           iframe.allowFullscreen = true;
-                           
-                           const container = document.getElementById(`video-container-${video.id}`);
-                           if (container) {
-                             container.innerHTML = '';
-                             container.appendChild(iframe);
-                           }
-                         }}
-                    >
-                      <div className="w-16 h-16 rounded-full bg-band-pink/80 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 5V19L19 12L8 5Z" fill="white"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-xs text-white">
-                      {video.duration}
-                    </div>
-                  </div>
-                  <div id={`video-container-${video.id}`} className="hidden aspect-video w-full bg-black"></div>
-                  <div className="p-4 bg-black/50 backdrop-blur-sm">
-                    <h3 className="text-white font-medium text-lg">{video.title}</h3>
-                  </div>
-                </div>
+                <VideoCard key={video.id} video={video} />
               ))}
             </div>
           </TabsContent>
