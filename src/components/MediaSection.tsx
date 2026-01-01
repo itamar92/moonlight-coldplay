@@ -175,19 +175,21 @@ const MediaSection = () => {
           </div>
           
           <TabsContent value="photos" className="mt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {photos.map((photo) => (
-                <div key={photo.id} className="relative overflow-hidden rounded-lg group">
-                  <img 
-                    src={photo.url} 
-                    alt={photo.title}
-                    className="w-full h-64 object-cover transform transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                    <p className="text-white text-sm">{photo.description || photo.title}</p>
+            <div className="max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-band-purple/50 scrollbar-track-transparent">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {photos.map((photo) => (
+                  <div key={photo.id} className="relative overflow-hidden rounded-lg group">
+                    <img 
+                      src={photo.url} 
+                      alt={photo.title}
+                      className="w-full h-64 object-cover transform transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                      <p className="text-white text-sm">{photo.description || photo.title}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </TabsContent>
           
