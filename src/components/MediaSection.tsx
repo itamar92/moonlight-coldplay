@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Video } from "lucide-react";
 import { useLanguage } from '@/context/LanguageContext';
 import { fetchMedia, MediaItem } from '@/lib/googleSheets';
 import { SparklesCore } from '@/components/ui/sparkles';
+import { ThreeDPhotoCarousel } from '@/components/ui/3d-carousel';
 
 const VideoCard = ({ video }: { video: MediaItem }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -175,22 +176,7 @@ const MediaSection = () => {
           </div>
           
           <TabsContent value="photos" className="mt-0">
-            <div className="max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-band-purple/50 scrollbar-track-transparent">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {photos.map((photo) => (
-                  <div key={photo.id} className="relative overflow-hidden rounded-lg group">
-                    <img 
-                      src={photo.url} 
-                      alt={photo.title}
-                      className="w-full h-64 object-cover transform transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                      <p className="text-white text-sm">{photo.description || photo.title}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ThreeDPhotoCarousel images={photos.map(photo => photo.url)} />
           </TabsContent>
           
           <TabsContent value="videos" className="mt-0">
