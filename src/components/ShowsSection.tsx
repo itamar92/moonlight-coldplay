@@ -202,14 +202,13 @@ const ShowsSection = () => {
           {shows.map((show, index) => (
             <Card key={show.id || index} className="bg-black/50 border-band-purple/20 backdrop-blur-sm overflow-hidden group hover:border-band-purple transition-colors">
               {show.image_url && (
-                <div className="h-48 w-full overflow-hidden bg-band-purple/10">
+                <div className="w-full overflow-hidden bg-band-purple/10">
                   <img 
                     src={show.image_url} 
                     alt={show.venue} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
-                      // Hide image on error
-                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.style.display = 'none';
                       console.log('[Image Error] Failed to load:', show.image_url);
                     }}
                   />
