@@ -108,9 +108,10 @@ const Navbar = () => {
   const menuSpacing = language === 'he' ? 'space-x-6 md:space-x-8' : 'space-x-6 md:space-x-10';
 
   return (
-    <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <a href="#home" className="flex items-center space-x-2 cursor-pointer">
+    <nav className={`fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20 ${language === 'he' ? 'rtl' : 'ltr'}`}>
+      <div className="w-full px-4 py-4 flex items-center justify-between">
+        {/* Logo - edge aligned */}
+        <a href="#home" className={`flex items-center space-x-2 cursor-pointer ${language === 'he' ? 'order-last' : 'order-first'}`}>
           <img 
             src="/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png" 
             alt="Moonlight Logo" 
@@ -119,7 +120,8 @@ const Navbar = () => {
           <span className="font-bold text-2xl text-white text-glow">MOONLIGHT</span>
         </a>
         
-        <div className={`hidden md:flex ${menuSpacing} text-sm font-medium`}>
+        {/* Center navigation */}
+        <div className={`hidden md:flex ${menuSpacing} text-sm font-medium absolute left-1/2 transform -translate-x-1/2`}>
           <a href="#home" className="text-white hover:text-band-purple transition-colors">{menuItems.home}</a>
           <a href="#shows" className="text-white hover:text-band-purple transition-colors">{menuItems.shows}</a>
           <a href="#media" className="text-white hover:text-band-purple transition-colors">{menuItems.media}</a>
@@ -128,10 +130,13 @@ const Navbar = () => {
           {isAdmin && (
             <Link to="/admin" className="text-band-purple hover:text-band-purple/80 transition-colors flex items-center">
               <span>{menuItems.admin}</span>
-              {/* Admin badge */}
               <span className="ml-1 px-1.5 py-0.5 text-xs bg-band-purple/20 rounded-full">ADMIN</span>
             </Link>
           )}
+        </div>
+        
+        {/* Right side items */}
+        <div className={`hidden md:flex items-center space-x-4 ${language === 'he' ? 'order-first' : 'order-last'}`}>
           <LanguageSwitcher />
           {session ? (
             <DropdownMenu>
@@ -178,6 +183,7 @@ const Navbar = () => {
             <Link to="/auth" className="text-white/70 hover:text-white">{menuItems.login}</Link>
           )}
         </div>
+        
         
         <Sheet>
           <SheetTrigger asChild>
