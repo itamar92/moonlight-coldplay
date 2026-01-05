@@ -110,14 +110,14 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 w-full bg-band-dark/80 backdrop-blur-sm z-50 border-b border-band-purple/20">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
+        <a href="#home" className="flex items-center space-x-2 cursor-pointer">
           <img 
             src="/lovable-uploads/1dd6733a-cd1d-4727-bc54-7d4a3885c0c5.png" 
             alt="Moonlight Logo" 
             className="h-10 w-10"
           />
           <span className="font-bold text-2xl text-white text-glow">MOONLIGHT</span>
-        </Link>
+        </a>
         
         <div className={`hidden md:flex ${menuSpacing} text-sm font-medium`}>
           <a href="#home" className="text-white hover:text-band-purple transition-colors">{menuItems.home}</a>

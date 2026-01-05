@@ -79,7 +79,7 @@ const HeroSection = () => {
   }
 
   return (
-    <section className="py-24 bg-band-dark relative overflow-hidden">
+    <section id="home" className="py-24 bg-band-dark relative overflow-hidden">
       {/* Hero sparkles */}
       <div className="absolute inset-0 z-0">
         <SparklesCore
